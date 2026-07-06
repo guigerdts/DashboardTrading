@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+.venv*/
+.ruff_cache/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# User assets (uploaded data, not source code)
+assets/screenshots/*
+assets/icons/*
+assets/logos/*
+assets/themes/*
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data directory (runtime database)
+data/*
+!data/.gitkeep
