@@ -202,7 +202,10 @@ def _create_trade(conn, *, extra_cols: str = "", extra_vals: str = "") -> int:
 # Parametrized CHECK violation cases
 # ---------------------------------------------------------------------------
 
-_BASE_TRADE_COLS = "account_id, asset_id, direction, status, entry_price, quantity, entry_datetime, commission, swap_fees, created_at, is_active"
+_BASE_TRADE_COLS = (
+    "account_id, asset_id, direction, status, entry_price, "
+    "quantity, entry_datetime, commission, swap_fees, created_at, is_active"
+)
 _TS = "'2026-01-01T00:00:00Z'"
 _BASE_TRADE_VALS = f"900, 900, 'long', 'open', 1.0, 1.0, {_TS}, 0.0, 0.0, {_TS}, 1"
 
