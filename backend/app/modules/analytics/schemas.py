@@ -22,6 +22,7 @@ class PerformanceMetrics(BaseModel):
     net_pnl: float
     gross_profit: float
     gross_loss: float
+    trade_count: int = 0
     win_rate: float
     profit_factor: float | None = None
     expectancy: float

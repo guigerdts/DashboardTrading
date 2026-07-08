@@ -7,6 +7,7 @@ async function request(endpoint, options = {}) {
     ...options,
   });
   if (!response.ok) {
+    response.clone().json().then(body => console.error('API error details:', body)).catch(() => {});
     const error = new Error(`API error: ${response.status}`);
     error.status = response.status;
     throw error;
