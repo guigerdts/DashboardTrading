@@ -6,12 +6,19 @@ Derived metrics (PnL, R:R) are computed on-the-fly per SSOT & C6 principles.
 Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from sqlalchemy import REAL, ForeignKey, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.account import Account
+    from app.models.asset import Asset
 
 
 class Trade(Base, TimestampMixin, SoftDeleteMixin):
@@ -43,6 +50,11 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
     # ------------------------------------------------------------------
+    # Broker ticket (nullable TEXT with partial UNIQUE per account)
+    # ------------------------------------------------------------------
+    broker_ticket: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # ------------------------------------------------------------------
     # Required FKs (RESTRICT on delete — never orphan trades)
     # ------------------------------------------------------------------
     account_id: Mapped[int] = mapped_column(
@@ -55,26 +67,44 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # ------------------------------------------------------------------
+    # Relationships (lazy=raise by default — explicit loading only)
+    # ------------------------------------------------------------------
+    account: Mapped[Account] = relationship(
+        "Account",
+        lazy="raise",
+    )
+    asset: Mapped[Asset] = relationship(
+        "Asset",
+        lazy="raise",
+    )
+
+    # ------------------------------------------------------------------
     # Direction & status (CHECK-enforced enums)
     # ------------------------------------------------------------------
     direction: Mapped[str] = mapped_column(
-        Text, nullable=False  # BR-02 — CHECK in __table_args__
+        Text,
+        nullable=False,  # BR-02 — CHECK in __table_args__
     )
     status: Mapped[str] = mapped_column(
-        Text, nullable=False, default="open"  # BR-11 — CHECK in __table_args__
+        Text,
+        nullable=False,
+        default="open",  # BR-11 — CHECK in __table_args__
     )
 
     # ------------------------------------------------------------------
     # Core required numeric fields
     # ------------------------------------------------------------------
     entry_price: Mapped[float] = mapped_column(
-        REAL, nullable=False  # BR-04 — CHECK in __table_args__
+        REAL,
+        nullable=False,  # BR-04 — CHECK in __table_args__
     )
     quantity: Mapped[float] = mapped_column(
-        REAL, nullable=False  # BR-03 — CHECK in __table_args__
+        REAL,
+        nullable=False,  # BR-03 — CHECK in __table_args__
     )
     entry_datetime: Mapped[str] = mapped_column(
-        Text, nullable=False  # BR-05
+        Text,
+        nullable=False,  # BR-05
     )
 
     # ------------------------------------------------------------------
@@ -97,18 +127,10 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     # exist at CREATE TABLE time — required because SQLite cannot ALTER TABLE
     # ADD CONSTRAINT later. The ORM-level FK metadata gap is acceptable since
     # relationships are not defined in this phase.
-    strategy_id: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
-    setup_id: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
-    risk_profile_id: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
-    trading_session_id: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
+    strategy_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    setup_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    risk_profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    trading_session_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # ------------------------------------------------------------------
     # Exit fields (both NULL or both set — service-level BR-10)
@@ -122,17 +144,22 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     stop_loss: Mapped[float | None] = mapped_column(REAL, nullable=True)
     take_profit: Mapped[float | None] = mapped_column(REAL, nullable=True)
     position_size: Mapped[float | None] = mapped_column(
-        REAL, nullable=True  # BR-13 — CHECK in __table_args__
+        REAL,
+        nullable=True,  # BR-13 — CHECK in __table_args__
     )
 
     # ------------------------------------------------------------------
     # Fees
     # ------------------------------------------------------------------
     commission: Mapped[float] = mapped_column(
-        REAL, nullable=False, default=0  # BR-25 — CHECK in __table_args__
+        REAL,
+        nullable=False,
+        default=0,  # BR-25 — CHECK in __table_args__
     )
     swap_fees: Mapped[float] = mapped_column(
-        REAL, nullable=False, default=0  # CHECK in __table_args__
+        REAL,
+        nullable=False,
+        default=0,  # CHECK in __table_args__
     )
 
     # ------------------------------------------------------------------
@@ -147,7 +174,8 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     # Audit / soft-lock
     # ------------------------------------------------------------------
     editable_until: Mapped[str | None] = mapped_column(
-        Text, nullable=True  # BR-12 — service-enforced
+        Text,
+        nullable=True,  # BR-12 — service-enforced
     )
     notes_override: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -179,13 +207,15 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
         # ---- Direction filter ----
         sa.Index("ix_trades_direction", "direction"),
         # ---- Composite indexes (3) ----
+        sa.Index("ix_trades_status_entry_datetime", "status", "entry_datetime"),
+        sa.Index("ix_trades_asset_entry_datetime", "asset_id", "entry_datetime"),
+        sa.Index("ix_trades_strategy_entry_datetime", "strategy_id", "entry_datetime"),
+        # ---- Partial UNIQUE index for broker_ticket per account ----
         sa.Index(
-            "ix_trades_status_entry_datetime", "status", "entry_datetime"
-        ),
-        sa.Index(
-            "ix_trades_asset_entry_datetime", "asset_id", "entry_datetime"
-        ),
-        sa.Index(
-            "ix_trades_strategy_entry_datetime", "strategy_id", "entry_datetime"
+            "ix_trades_account_broker_ticket",
+            "account_id",
+            "broker_ticket",
+            unique=True,
+            sqlite_where=sa.text("broker_ticket IS NOT NULL"),
         ),
     )
