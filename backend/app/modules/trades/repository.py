@@ -3,8 +3,12 @@
 Extends ``SqlAlchemyRepository[Trade]``. No business logic — pure data access.
 """
 
-from sqlalchemy import func, select
+from datetime import datetime
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import joinedload
+
+from app.models.asset import Asset
 from app.models.trade import Trade
 from app.modules.shared.base import SqlAlchemyRepository
 
@@ -14,6 +18,50 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
 
     def __init__(self, session):
         super().__init__(session, Trade)
+
+    async def get_by_ticket(self, account_id: int, broker_ticket: str) -> Trade | None:
+        """Find a trade by account and broker ticket (for import dedup)."""
+        stmt = select(Trade).where(
+            Trade.account_id == account_id,
+            Trade.broker_ticket == broker_ticket,
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def list_closed(
+        self,
+        *,
+        account_id: int | None = None,
+        asset_id: int | None = None,
+        market_id: int | None = None,
+        date_from: datetime | None = None,
+        date_to: datetime | None = None,
+    ) -> list[Trade]:
+        """Return closed trades matching optional filters, sorted by exit_datetime ASC.
+
+        Single query with eager loading of account and asset relationships.
+        ``market_id`` filter requires a join to the ``Asset`` model.
+        """
+        query = (
+            select(Trade)
+            .options(joinedload(Trade.account), joinedload(Trade.asset))
+            .where(Trade.status == "closed")
+        )
+
+        if account_id is not None:
+            query = query.where(Trade.account_id == account_id)
+        if asset_id is not None:
+            query = query.where(Trade.asset_id == asset_id)
+        if market_id is not None:
+            query = query.join(Trade.asset).where(Asset.market_id == market_id)
+        if date_from is not None:
+            query = query.where(Trade.exit_datetime >= date_from)
+        if date_to is not None:
+            query = query.where(Trade.exit_datetime <= date_to)
+
+        query = query.order_by(Trade.exit_datetime.asc())
+
+        result = await self._session.execute(query)
+        return list(result.scalars().unique().all())
 
     async def list(
         self,
