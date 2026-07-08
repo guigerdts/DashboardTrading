@@ -1,3 +1,5 @@
-"""MT5 trade import module."""
+"""MT5 Import module — recover CSV trades from MT5 platform."""
 
-# __all__ exports deferred to PR #3 when router.py is created.
+from app.modules.imports.router import router
+
+__all__ = ["router"]
