@@ -18,6 +18,24 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
+# Columns used in every INSERT — kept short to avoid E501 line-too-long.
+_TRADE_COLS = ", ".join(
+    [
+        "account_id",
+        "asset_id",
+        "direction",
+        "status",
+        "entry_price",
+        "quantity",
+        "entry_datetime",
+        "created_at",
+        "commission",
+        "swap_fees",
+        "is_active",
+        "broker_ticket",
+    ]
+)
+
 
 @pytest.mark.asyncio
 async def test_broker_ticket_column_exists(db_session):
@@ -35,16 +53,14 @@ async def test_multiple_null_broker_tickets_allowed(db_session):
     """Multiple NULL broker_ticket values do NOT violate the unique index."""
     await db_session.execute(
         text(
-            "INSERT INTO trades (account_id, asset_id, direction, status, "
-            "entry_price, quantity, entry_datetime, created_at, commission, swap_fees, is_active, broker_ticket) "
+            f"INSERT INTO trades ({_TRADE_COLS}) "
             "VALUES (1, 1, 'long', 'closed', 100.0, 1.0, '2026-01-01T00:00:00', "
             "'2026-01-01T00:00:00', 0, 0, 1, NULL)"
         )
     )
     await db_session.execute(
         text(
-            "INSERT INTO trades (account_id, asset_id, direction, status, "
-            "entry_price, quantity, entry_datetime, created_at, commission, swap_fees, is_active, broker_ticket) "
+            f"INSERT INTO trades ({_TRADE_COLS}) "
             "VALUES (1, 1, 'long', 'closed', 100.0, 1.0, '2026-01-02T00:00:00', "
             "'2026-01-02T00:00:00', 0, 0, 1, NULL)"
         )
@@ -57,8 +73,7 @@ async def test_duplicate_broker_ticket_same_account_fails(db_session):
     """Same broker_ticket + same account_id raises IntegrityError."""
     await db_session.execute(
         text(
-            "INSERT INTO trades (account_id, asset_id, direction, status, "
-            "entry_price, quantity, entry_datetime, created_at, commission, swap_fees, is_active, broker_ticket) "
+            f"INSERT INTO trades ({_TRADE_COLS}) "
             "VALUES (1, 1, 'long', 'closed', 100.0, 1.0, '2026-01-01T00:00:00', "
             "'2026-01-01T00:00:00', 0, 0, 1, 'TKT-001')"
         )
@@ -66,8 +81,7 @@ async def test_duplicate_broker_ticket_same_account_fails(db_session):
     with pytest.raises(IntegrityError):
         await db_session.execute(
             text(
-                "INSERT INTO trades (account_id, asset_id, direction, status, "
-                "entry_price, quantity, entry_datetime, created_at, commission, swap_fees, is_active, broker_ticket) "
+                f"INSERT INTO trades ({_TRADE_COLS}) "
                 "VALUES (1, 1, 'long', 'closed', 100.0, 1.0, '2026-01-02T00:00:00', "
                 "'2026-01-02T00:00:00', 0, 0, 1, 'TKT-001')"
             )
@@ -79,8 +93,7 @@ async def test_same_ticket_different_accounts_allowed(db_session):
     """Same broker_ticket for DIFFERENT accounts is allowed."""
     await db_session.execute(
         text(
-            "INSERT INTO trades (account_id, asset_id, direction, status, "
-            "entry_price, quantity, entry_datetime, created_at, commission, swap_fees, is_active, broker_ticket) "
+            f"INSERT INTO trades ({_TRADE_COLS}) "
             "VALUES (1, 1, 'long', 'closed', 100.0, 1.0, '2026-01-01T00:00:00', "
             "'2026-01-01T00:00:00', 0, 0, 1, 'TKT-001')"
         )
@@ -88,8 +101,7 @@ async def test_same_ticket_different_accounts_allowed(db_session):
     # Different account_id (2) with same ticket — should succeed
     await db_session.execute(
         text(
-            "INSERT INTO trades (account_id, asset_id, direction, status, "
-            "entry_price, quantity, entry_datetime, created_at, commission, swap_fees, is_active, broker_ticket) "
+            f"INSERT INTO trades ({_TRADE_COLS}) "
             "VALUES (2, 1, 'long', 'closed', 100.0, 1.0, '2026-01-02T00:00:00', "
             "'2026-01-02T00:00:00', 0, 0, 1, 'TKT-001')"
         )

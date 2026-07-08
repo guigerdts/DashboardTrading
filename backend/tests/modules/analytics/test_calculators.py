@@ -7,8 +7,6 @@ with mock Trade objects created via the ``_make_trade()`` helper.
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.modules.analytics.calculators.breakdown import (
     breakdown_by_asset,
     breakdown_by_direction,
