@@ -10,6 +10,7 @@ const modules = [
   { name: 'Setups', path: '/setups' },
   { name: 'Screenshot Library', path: '/screenshot-library' },
   { name: 'Error Management', path: '/error-management' },
+  { name: 'MT5 Import', path: '/imports/mt5' },
   { name: 'Settings', path: '/settings' },
 ];
 

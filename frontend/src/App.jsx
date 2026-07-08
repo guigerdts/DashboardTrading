@@ -13,6 +13,7 @@ import ErrorManagement from './pages/ErrorManagement';
 import Settings from './pages/Settings';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const ImportPage = lazy(() => import('./modules/imports/mt5/pages/ImportPage'));
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/imports/mt5" element={<ImportPage />} />
         <Route path="/trading-journal" element={<TradingJournal />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/risk-management" element={<RiskManagement />} />

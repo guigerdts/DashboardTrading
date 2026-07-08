@@ -17,6 +17,11 @@ async function request(path, options = {}) {
     ...options,
   };
 
+  // FormData: let browser set Content-Type (with boundary)
+  if (options.body instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+
   const response = await fetch(url, config);
 
   if (!response.ok) {
@@ -31,7 +36,7 @@ async function request(path, options = {}) {
 
 export const api = {
   get: (path) => request(path, { method: 'GET' }),
-  post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
+  post: (path, data) => request(path, { method: 'POST', body: data instanceof FormData ? data : JSON.stringify(data) }),
   put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (path) => request(path, { method: 'DELETE' }),
 };
