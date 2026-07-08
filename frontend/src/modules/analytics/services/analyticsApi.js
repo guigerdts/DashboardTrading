@@ -26,3 +26,13 @@ export const analyticsApi = {
   getDirectionBreakdown: (filters) =>
     api.get('/analytics/breakdown/direction', { params: buildParams(filters) }),
 };
+
+// @gap: no UI consumer
+export async function getPerformance(filters) {
+  throw new Error('getPerformance is not implemented — no UI consumer yet');
+}
+
+// @gap: no UI consumer
+export async function getMarketBreakdown(filters) {
+  throw new Error('getMarketBreakdown is not implemented — no UI consumer yet');
+}

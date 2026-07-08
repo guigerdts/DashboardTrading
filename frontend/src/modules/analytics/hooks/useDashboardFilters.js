@@ -16,11 +16,15 @@ export function useDashboardFilters() {
 
   // Derive current filter values from the URL — drives all queries
   const filters = useMemo(
-    () => ({
-      accountId: searchParams.get('account_id') || null,
-      dateFrom: searchParams.get('date_from') || null,
-      dateTo: searchParams.get('date_to') || null,
-    }),
+    () => {
+      const rawAccountId = searchParams.get('account_id');
+      const accountIdNum = rawAccountId ? parseInt(rawAccountId, 10) : null;
+      return {
+        accountId: accountIdNum !== null && !isNaN(accountIdNum) ? accountIdNum : null,
+        dateFrom: searchParams.get('date_from') || null,
+        dateTo: searchParams.get('date_to') || null,
+      };
+    },
     [searchParams],
   );
 
