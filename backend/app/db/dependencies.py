@@ -93,3 +93,12 @@ async def get_broker_service(
     from app.modules.catalogs.service import BrokerService
 
     return BrokerService(uow)
+
+
+async def get_import_service(
+    uow=Depends(get_uow),
+) -> "ImportService":  # type: ignore[empty-body]  # noqa: F821
+    """Provide an ``ImportService`` instance for MT5 import requests."""
+    from app.modules.imports.service import ImportService
+
+    return ImportService(uow)
