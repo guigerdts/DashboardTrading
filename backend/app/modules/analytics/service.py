@@ -1,18 +1,30 @@
-"""AnalyticsService — orchestrator (temporary stub).
-
-Returns empty/zero data shapes. Real calculator-based implementation
-arrives in PR #3 (calculators).
-"""
+"""AnalyticsService — orchestrator. Single fetch, distributes to calculators."""
 
 from app.db.unit_of_work import UnitOfWork
+from app.modules.analytics.calculators.breakdown import (
+    breakdown_by_asset,
+    breakdown_by_direction,
+    breakdown_by_market,
+)
+from app.modules.analytics.calculators.performance import compute_performance
+from app.modules.analytics.calculators.risk import compute_risk
+from app.modules.analytics.calculators.timeseries import (
+    compute_equity_curve,
+    compute_pnl_by_period,
+    compute_streaks,
+)
 from app.modules.analytics.schemas import (
     AnalyticsFilter,
+    AssetBreakdown,
     AssetBreakdownResponse,
     DirectionBreakdownResponse,
+    EquityPoint,
     EquityResponse,
+    MarketBreakdown,
     MarketBreakdownResponse,
     PerformanceMetrics,
     PerformanceResponse,
+    PnLPeriod,
     RiskMetrics,
     StreakInfo,
     Streaks,
@@ -20,35 +32,10 @@ from app.modules.analytics.schemas import (
 )
 
 
-def _empty_performance() -> PerformanceMetrics:
-    return PerformanceMetrics(
-        net_pnl=0.0,
-        gross_profit=0.0,
-        gross_loss=0.0,
-        win_rate=0.0,
-        profit_factor=None,
-        expectancy=0.0,
-        avg_win=None,
-        avg_loss=None,
-        avg_r_multiple=None,
-    )
-
-
-def _empty_risk() -> RiskMetrics:
-    return RiskMetrics(
-        max_drawdown=0.0,
-        max_drawdown_pct=0.0,
-        current_drawdown=0.0,
-        current_drawdown_pct=0.0,
-        recovery_factor=None,
-        payoff_ratio=None,
-    )
-
-
 class AnalyticsService:
-    """Read-only analytics orchestrator (temporary — returns empty data).
+    """Read-only analytics orchestrator.
 
-    Replaced in PR #3 with calculator-based implementation.
+    Single query per method — all metrics computed in memory from the trade list.
     """
 
     def __init__(self, uow: UnitOfWork) -> None:
@@ -56,46 +43,63 @@ class AnalyticsService:
 
     async def get_summary(self, filters: AnalyticsFilter) -> SummaryResponse:
         trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        perf = compute_performance(trades)
+        risk = compute_risk(trades)
         return SummaryResponse(
             total_trades=len(trades),
-            performance=_empty_performance(),
-            risk=_empty_risk(),
+            performance=PerformanceMetrics(**perf),
+            risk=RiskMetrics(**risk),
         )
 
     async def get_equity(self, filters: AnalyticsFilter) -> EquityResponse:
         trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        curve = compute_equity_curve(trades)
+        streaks = compute_streaks(trades)
+
+        equity_points = [EquityPoint(**p) for p in curve]
+
         return EquityResponse(
             total_trades=len(trades),
-            equity_curve=[],
-            balance_curve=[],
+            equity_curve=equity_points,
+            balance_curve=equity_points,
             streaks=Streaks(
-                winning_streak=StreakInfo(current=0, maximum=0),
-                losing_streak=StreakInfo(current=0, maximum=0),
+                winning_streak=StreakInfo(**streaks["winning_streak"]),
+                losing_streak=StreakInfo(**streaks["losing_streak"]),
             ),
-            pnl_daily=[],
-            pnl_weekly=[],
-            pnl_monthly=[],
+            pnl_daily=[PnLPeriod(**p) for p in compute_pnl_by_period(trades, "daily")],
+            pnl_weekly=[PnLPeriod(**p) for p in compute_pnl_by_period(trades, "weekly")],
+            pnl_monthly=[PnLPeriod(**p) for p in compute_pnl_by_period(trades, "monthly")],
         )
 
     async def get_performance(self, filters: AnalyticsFilter) -> PerformanceResponse:
         trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        perf = compute_performance(trades)
         return PerformanceResponse(
             total_trades=len(trades),
-            performance=_empty_performance(),
+            performance=PerformanceMetrics(**perf),
         )
 
     async def get_breakdown_asset(self, filters: AnalyticsFilter) -> AssetBreakdownResponse:
         trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
-        return AssetBreakdownResponse(total_trades=len(trades), assets=[])
+        assets = breakdown_by_asset(trades)
+        return AssetBreakdownResponse(
+            total_trades=len(trades),
+            assets=[AssetBreakdown(**a) for a in assets],
+        )
 
     async def get_breakdown_direction(self, filters: AnalyticsFilter) -> DirectionBreakdownResponse:
         trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        directions = breakdown_by_direction(trades)
         return DirectionBreakdownResponse(
             total_trades=len(trades),
-            long=_empty_performance(),
-            short=_empty_performance(),
+            long=PerformanceMetrics(**directions["long"]),
+            short=PerformanceMetrics(**directions["short"]),
         )
 
     async def get_breakdown_market(self, filters: AnalyticsFilter) -> MarketBreakdownResponse:
         trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
-        return MarketBreakdownResponse(total_trades=len(trades), markets=[])
+        markets = breakdown_by_market(trades)
+        return MarketBreakdownResponse(
+            total_trades=len(trades),
+            markets=[MarketBreakdown(**m) for m in markets],
+        )
