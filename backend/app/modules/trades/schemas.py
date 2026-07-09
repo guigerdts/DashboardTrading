@@ -18,6 +18,8 @@ class TradeFilters(PaginationParams):
 
     All filters are optional. Default behaviour: show only active trades,
     ordered by ``entry_datetime DESC``.
+
+    ``sort_by`` is whitelist-restricted in the repository layer.
     """
 
     status: str | None = None
@@ -28,6 +30,8 @@ class TradeFilters(PaginationParams):
     date_to: str | None = None
     search: str | None = None
     is_active: bool = True
+    sort_by: str | None = None
+    sort_dir: str | None = None
 
 
 class TradeCreate(BaseModel):
@@ -95,6 +99,19 @@ class TradeClose(BaseModel):
     exit_datetime: datetime
 
 
+class TradeSummaryResponse(BaseModel):
+    """Response DTO for GET /api/trades/summary — aggregated trade stats."""
+
+    total_trades: int
+    total_pnl: float
+    win_count: int
+    loss_count: int
+    win_rate: float
+    avg_win: float
+    avg_loss: float
+    profit_factor: float | None
+
+
 class TradeResponse(BaseModel):
     """Response DTO for a ``Trade`` — serialised via ``from_attributes=True``."""
 
@@ -119,6 +136,8 @@ class TradeResponse(BaseModel):
     broker_id: int | None = None
     market_session_id: int | None = None
     timeframe_id: int | None = None
+    broker_ticket: str | None = None
+    asset_symbol: str | None = None
     editable_until: str | None = None
     notes_override: str | None = None
     is_active: bool

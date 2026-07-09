@@ -17,9 +17,7 @@ from app.models.trade import Trade
 from app.modules.trades.schemas import TradeClose, TradeCreate, TradeFilters, TradeUpdate
 
 
-def _compute_editable_until(
-    status: str, entry_datetime: datetime | None = None
-) -> str | None:
+def _compute_editable_until(status: str, entry_datetime: datetime | None = None) -> str | None:
     """Compute ``editable_until`` per BR-12.
 
     Open trades: no edit window (returns ``None``).
@@ -113,6 +111,24 @@ class TradeService:
             is_active=filters.is_active,
             page=filters.page,
             page_size=filters.page_size,
+            sort_by=filters.sort_by or "entry_datetime",
+            sort_dir=filters.sort_dir or "desc",
+        )
+
+    async def get_summary(self, filters: TradeFilters) -> dict:
+        """Return aggregated trade summary for the journal.
+
+        Thin delegation to ``TradeRepository.get_summary()`` with filter fields
+        extracted from the ``TradeFilters`` DTO.
+        """
+        return await self.uow.trades.get_summary(
+            status=filters.status,
+            direction=filters.direction,
+            account_id=filters.account_id,
+            asset_id=filters.asset_id,
+            date_from=filters.date_from,
+            date_to=filters.date_to,
+            search=filters.search,
         )
 
     async def update(self, id: int, dto: TradeUpdate) -> Trade:

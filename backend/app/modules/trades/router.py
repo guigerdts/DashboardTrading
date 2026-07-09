@@ -4,6 +4,7 @@ Endpoints
 ---------
 - POST   /api/trades          → TradeResponse (201)
 - GET    /api/trades          → PaginatedResponse[TradeResponse]
+- GET    /api/trades/summary  → TradeSummaryResponse   (same filters as list)
 - GET    /api/trades/{id}     → TradeResponse          (404 if missing)
 - PATCH  /api/trades/{id}     → TradeResponse
 - DELETE /api/trades/{id}     → 204 No Content         (soft-delete)
@@ -19,6 +20,7 @@ from app.modules.trades.schemas import (
     TradeCreate,
     TradeFilters,
     TradeResponse,
+    TradeSummaryResponse,
     TradeUpdate,
 )
 from app.modules.trades.service import TradeService
@@ -53,6 +55,19 @@ async def list_trades(
         page_size=filters.page_size,
         pages=pages,
     )
+
+
+@router.get("/summary", response_model=TradeSummaryResponse)
+async def get_trades_summary(
+    filters: TradeFilters = Depends(),
+    svc: TradeService = Depends(get_trade_service),
+):
+    """Return aggregated trade summary scoped to the same filters as list.
+
+    Excludes pagination and sort params. Supports all filter params
+    (account_id, asset_id, direction, status, date_from, date_to, search).
+    """
+    return await svc.get_summary(filters)
 
 
 @router.get("/{id}", response_model=TradeResponse)
