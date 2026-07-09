@@ -20,7 +20,7 @@ function validateFile(file) {
   return null;
 }
 
-function importReducer(state, action) {
+function importReducer(state = initialState, action) {
   switch (action.type) {
     case 'SET_FILE': {
       const validationError = validateFile(action.file);
@@ -92,6 +92,8 @@ function importReducer(state, action) {
   }
 }
 
+export { validateFile, importReducer };
+
 export function useImportFlow() {
   const [store, dispatch] = useReducer(importReducer, initialState);
 
@@ -128,7 +130,7 @@ export function useImportFlow() {
 
   const reset = useCallback(() => dispatch({ type: 'RESET' }), []);
 
-  const canConfirm = store.state === 'previewReady';
+  const canConfirm = store.state === 'previewReady' && (store.previewData?.valid_rows ?? 0) > 0;
   const isPreviewing = store.state === 'previewLoading';
   const isConfirming = store.state === 'confirmLoading';
 
