@@ -5,10 +5,11 @@ Extends ``SqlAlchemyRepository[Trade]``. No business logic — pure data access.
 
 from datetime import datetime
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, exists, func, or_, select
 from sqlalchemy.orm import contains_eager, joinedload
 
 from app.models.asset import Asset
+from app.models.review import TradeReview
 from app.models.trade import Trade
 from app.modules.shared.base import SqlAlchemyRepository
 
@@ -138,9 +139,7 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         # Total count — must join Asset when search references Asset.symbol
         count_from = select(func.count())
         if search is not None:
-            count_from = count_from.select_from(Trade).outerjoin(
-                Trade.asset
-            )
+            count_from = count_from.select_from(Trade).outerjoin(Trade.asset)
         else:
             count_from = count_from.select_from(Trade)
         count_stmt = count_from.where(*where_clauses)
@@ -181,11 +180,70 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         # Stable sort tiebreaker (REQ-SPEC-02): always append id DESC
         stmt = stmt.order_by(sort_column, Trade.id.desc())
 
+        # has_review subquery — correlated EXISTS against trade_reviews
+        has_review_expr = (
+            exists().where(TradeReview.trade_id == Trade.id).correlate(Trade).label("has_review")
+        )
+        stmt = stmt.add_columns(has_review_expr)
+
         # Pagination
         stmt = stmt.limit(page_size).offset((page - 1) * page_size)
-        items = list((await self._session.execute(stmt)).scalars().unique().all())
+        rows = (await self._session.execute(stmt)).unique().all()
+        items = []
+        for row in rows:
+            trade = row[0]
+            setattr(trade, "has_review", bool(row[1]))
+            items.append(trade)
 
         return items, total
+
+    async def get_with_relations(self, id: int) -> Trade | None:
+        """Retrieve a trade with eager-loaded account, asset, and review EXISTS.
+
+        Returns ``None`` (not 404) if not found — the service layer handles
+        the ``NotFoundError`` for consistency with ``get()``.
+        """
+        has_review_expr = (
+            exists().where(TradeReview.trade_id == Trade.id).correlate(Trade).label("has_review")
+        )
+        stmt = (
+            select(Trade, has_review_expr)
+            .options(joinedload(Trade.account), joinedload(Trade.asset))
+            .where(Trade.id == id)
+        )
+        row = (await self._session.execute(stmt)).unique().one_or_none()
+        if row is None:
+            return None
+        trade = row[0]
+        setattr(trade, "has_review", bool(row[1]))
+        return trade
+
+    async def get_review(self, trade_id: int) -> TradeReview | None:
+        """Return the first ``TradeReview`` for a trade, or ``None``."""
+        stmt = select(TradeReview).where(TradeReview.trade_id == trade_id)
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def upsert_review(
+        self, trade_id: int, content: str | None, lesson_learned: str | None
+    ) -> TradeReview:
+        """Create or update a ``TradeReview`` for the given trade (upsert).
+
+        If a review already exists, updates its fields.
+        If not, creates a new one.
+        """
+        existing = await self.get_review(trade_id)
+        if existing is not None:
+            existing.content = content
+            existing.lesson_learned = lesson_learned
+            return existing
+        review = TradeReview(
+            trade_id=trade_id,
+            content=content,
+            lesson_learned=lesson_learned,
+        )
+        self._session.add(review)
+        await self._session.flush()
+        return review
 
     async def get_summary(
         self,

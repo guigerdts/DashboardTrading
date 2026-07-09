@@ -14,7 +14,13 @@ from datetime import UTC, datetime, timedelta
 from app.core.exceptions import BusinessRuleError, NotFoundError
 from app.db.unit_of_work import UnitOfWork
 from app.models.trade import Trade
-from app.modules.trades.schemas import TradeClose, TradeCreate, TradeFilters, TradeUpdate
+from app.modules.trades.schemas import (
+    ReviewUpdate,
+    TradeClose,
+    TradeCreate,
+    TradeFilters,
+    TradeUpdate,
+)
 
 
 def _compute_editable_until(status: str, entry_datetime: datetime | None = None) -> str | None:
@@ -192,6 +198,127 @@ class TradeService:
         trade.is_active = 0
         trade.updated_at = datetime.now(UTC).isoformat()
         self.logger.info("Soft-deleted trade id=%d", id)
+
+    async def get_detail(self, id: int) -> dict:
+        """Return enriched trade detail for the detail page.
+
+        Loads account/asset relationships, computes PnL, duration,
+        return %, and embeds the review if one exists.
+        """
+        trade = await self.uow.trades.get_with_relations(id)
+        if trade is None:
+            raise NotFoundError(f"Trade with id {id} not found")
+
+        net_pnl = None
+        duration_hours = None
+        return_pct = None
+
+        if trade.status == "closed" and trade.exit_price is not None:
+            raw_pnl = (
+                (trade.exit_price - trade.entry_price) * trade.quantity
+                if trade.direction == "long"
+                else (trade.entry_price - trade.exit_price) * trade.quantity
+            )
+            net_pnl = round(raw_pnl - trade.commission - abs(trade.swap_fees), 2)
+
+            if trade.entry_price > 0 and trade.quantity > 0:
+                return_pct = round(net_pnl / (trade.entry_price * trade.quantity) * 100, 4)
+
+        if trade.status == "closed" and trade.exit_datetime and trade.entry_datetime:
+            try:
+                from datetime import datetime as dt
+
+                entry = dt.fromisoformat(trade.entry_datetime)
+                exit_dt = dt.fromisoformat(trade.exit_datetime)
+                delta = exit_dt - entry
+                duration_hours = round(delta.total_seconds() / 3600, 2)
+            except (ValueError, TypeError):
+                pass
+
+        review = await self.uow.trades.get_review(id)
+        review_data = None
+        if review is not None:
+            review_data = {
+                "id": review.id,
+                "trade_id": review.trade_id,
+                "content": review.content,
+                "lesson_learned": review.lesson_learned,
+                "created_at": review.created_at,
+                "updated_at": review.updated_at,
+            }
+
+        return {
+            "id": trade.id,
+            "account_id": trade.account_id,
+            "asset_id": trade.asset_id,
+            "direction": trade.direction,
+            "status": trade.status,
+            "entry_price": trade.entry_price,
+            "quantity": trade.quantity,
+            "entry_datetime": trade.entry_datetime,
+            "exit_price": trade.exit_price,
+            "exit_datetime": trade.exit_datetime,
+            "stop_loss": trade.stop_loss,
+            "take_profit": trade.take_profit,
+            "position_size": trade.position_size,
+            "commission": trade.commission or 0,
+            "swap_fees": trade.swap_fees or 0,
+            "risk_amount": trade.risk_amount,
+            "broker_id": trade.broker_id,
+            "market_session_id": trade.market_session_id,
+            "timeframe_id": trade.timeframe_id,
+            "broker_ticket": trade.broker_ticket,
+            "asset_symbol": trade.asset.symbol if trade.asset else None,
+            "account_name": trade.account.name if trade.account else None,
+            "strategy_id": trade.strategy_id,
+            "setup_id": trade.setup_id,
+            "editable_until": trade.editable_until,
+            "notes_override": trade.notes_override,
+            "is_active": bool(trade.is_active),
+            "created_at": trade.created_at,
+            "updated_at": trade.updated_at,
+            "has_review": bool(getattr(trade, "has_review", False)),
+            "duration_hours": duration_hours,
+            "net_pnl": net_pnl,
+            "return_pct": return_pct,
+            "review": review_data,
+        }
+
+    async def get_review(self, id: int) -> dict | None:
+        """Return the review for a trade, or a dict with null fields."""
+        trade = await self.uow.trades.get(id)
+        if trade is None:
+            raise NotFoundError(f"Trade with id {id} not found")
+        review = await self.uow.trades.get_review(id)
+        if review is None:
+            return None
+        return {
+            "id": review.id,
+            "trade_id": review.trade_id,
+            "content": review.content,
+            "lesson_learned": review.lesson_learned,
+            "created_at": review.created_at,
+            "updated_at": review.updated_at,
+        }
+
+    async def upsert_review(self, id: int, dto: ReviewUpdate) -> dict:
+        """Upsert a trade review. Returns the serialized review."""
+        trade = await self.uow.trades.get(id)
+        if trade is None:
+            raise NotFoundError(f"Trade with id {id} not found")
+        review = await self.uow.trades.upsert_review(
+            trade_id=id,
+            content=dto.content,
+            lesson_learned=dto.lesson_learned,
+        )
+        return {
+            "id": review.id,
+            "trade_id": review.trade_id,
+            "content": review.content,
+            "lesson_learned": review.lesson_learned,
+            "created_at": review.created_at,
+            "updated_at": review.updated_at,
+        }
 
     # ------------------------------------------------------------------
     # Private validators

@@ -140,6 +140,43 @@ class TradeResponse(BaseModel):
     asset_symbol: str | None = None
     editable_until: str | None = None
     notes_override: str | None = None
+    has_review: bool = False
     is_active: bool
     created_at: str
     updated_at: str | None = None
+
+
+class TradeDetailResponse(TradeResponse):
+    """Enriched trade detail response for the detail page.
+
+    Extends ``TradeResponse`` with computed fields and related data
+    loaded via eager joins in the repository layer.
+    """
+
+    account_name: str | None = None
+    strategy_id: int | None = None
+    setup_id: int | None = None
+    duration_hours: float | None = None
+    net_pnl: float | None = None
+    return_pct: float | None = None
+    review: "ReviewResponse | None" = None
+
+
+class ReviewResponse(BaseModel):
+    """Response DTO for a ``TradeReview``."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    trade_id: int
+    content: str | None = None
+    lesson_learned: str | None = None
+    created_at: str
+    updated_at: str | None = None
+
+
+class ReviewUpdate(BaseModel):
+    """Request DTO for creating or updating a trade review (upsert)."""
+
+    content: str | None = None
+    lesson_learned: str | None = None
