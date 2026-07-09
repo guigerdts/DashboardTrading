@@ -24,4 +24,10 @@ export const api = {
     const qs = query.toString();
     return request(qs ? `${endpoint}?${qs}` : endpoint, { signal });
   },
+
+  put: (endpoint, body) =>
+    request(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    }),
 };
