@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 
 import Home from './pages/Home';
 import TradingJournal from './pages/TradingJournal';
+import TradeDetail from './pages/TradeDetail';
 import Analytics from './pages/Analytics';
 import RiskManagement from './pages/RiskManagement';
 import Psychology from './pages/Psychology';
@@ -23,6 +24,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/imports/mt5" element={<ImportPage />} />
         <Route path="/trading-journal" element={<TradingJournal />} />
+        <Route path="/trades/:id" element={<TradeDetail />} />
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/risk-management" element={<RiskManagement />} />
         <Route path="/psychology" element={<Psychology />} />

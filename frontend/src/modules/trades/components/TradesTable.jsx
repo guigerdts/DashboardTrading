@@ -13,6 +13,7 @@ const COLUMNS = [
   { key: 'exit_datetime', label: 'Exit Date', sortable: true },
   { key: 'net_pnl', label: 'P&L', sortable: true },
   { key: 'status', label: 'Status', sortable: false },
+  { key: 'has_review', label: '', sortable: false },
 ];
 
 /**
@@ -218,6 +219,13 @@ export function TradesTable({
                       </span>
                     ) : (
                       '\u2014'
+                    )}
+                  </td>
+                  <td className="py-3 pr-2 text-center">
+                    {trade.has_review ? (
+                      <span className="text-xs text-yellow-600" title="Has review">\u2605</span>
+                    ) : (
+                      <span className="text-xs text-gray-300">\u2606</span>
                     )}
                   </td>
                 </tr>
