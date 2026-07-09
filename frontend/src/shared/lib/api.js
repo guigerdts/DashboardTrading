@@ -16,12 +16,12 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
-  get: (endpoint, { params = {} } = {}) => {
+  get: (endpoint, { params = {}, signal } = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value != null && value !== '') query.append(key, value);
     });
     const qs = query.toString();
-    return request(qs ? `${endpoint}?${qs}` : endpoint);
+    return request(qs ? `${endpoint}?${qs}` : endpoint, { signal });
   },
 };
