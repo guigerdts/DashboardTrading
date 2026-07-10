@@ -7,6 +7,7 @@ import { TradeHeader } from '../modules/trade-review/components/TradeHeader';
 import { ExecutionDetails } from '../modules/trade-review/components/ExecutionDetails';
 import { RiskDetails } from '../modules/trade-review/components/RiskDetails';
 import { ReviewEditor } from '../modules/trade-review/components/ReviewEditor';
+import { ContextSection } from '../modules/trade-review/components/ContextSection';
 
 export default function TradeDetail() {
   const { id } = useParams();
@@ -60,6 +61,12 @@ export default function TradeDetail() {
           <RiskDetails data={data} isLoading={isLoading} />
         </ErrorBoundary>
       </div>
+
+      <ErrorBoundary>
+        <div className="mb-6">
+          <ContextSection data={data} isLoading={isLoading} />
+        </div>
+      </ErrorBoundary>
 
       <ErrorBoundary>
         <div className="mb-6">
