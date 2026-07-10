@@ -54,6 +54,7 @@ export function CatalogAdmin({
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [error, setError] = useState(null);
+  const [archiveError, setArchiveError] = useState(null);
   const [showArchived, setShowArchived] = useState(false);
 
   const { data: items, isLoading, isError, error: queryError, refetch } = listQuery;
@@ -78,12 +79,16 @@ export function CatalogAdmin({
   };
 
   const openEdit = (item) => {
-    setFormData({
+    const base = {
       name: item.name || '',
       description: item.description || '',
-      category: item.category || '',
-      color: item.color || '',
-    });
+    };
+    // Only include category/color for tag entities that have them
+    if (item.category !== undefined || item.color !== undefined) {
+      base.category = item.category || '';
+      base.color = item.color || '';
+    }
+    setFormData(base);
     setEditingItem(item);
     setShowForm(true);
     setError(null);
@@ -99,8 +104,8 @@ export function CatalogAdmin({
     setError(null);
 
     const payload = { name: formData.name, description: formData.description || null };
-    if (formData.category !== undefined) payload.category = formData.category || null;
-    if (formData.color !== undefined) payload.color = formData.color || null;
+    if ('category' in formData) payload.category = formData.category || null;
+    if ('color' in formData) payload.color = formData.color || null;
 
     try {
       if (editingItem) {
@@ -117,8 +122,9 @@ export function CatalogAdmin({
   const handleArchive = async (item) => {
     try {
       await archive.mutateAsync(item.id);
+      setArchiveError(null);
     } catch (err) {
-      setError(err?.data?.detail || err.message || 'Failed to archive');
+      setArchiveError(err?.data?.detail || err.message || 'Failed to archive');
     }
   };
 
@@ -201,6 +207,12 @@ export function CatalogAdmin({
         </Card>
       )}
 
+      {archiveError && (
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {archiveError}
+        </div>
+      )}
+
       {isError && (
         <ErrorFallback message={queryError?.message || `Failed to load ${entity}s`} onRetry={refetch} />
       )}
@@ -236,7 +248,7 @@ export function CatalogAdmin({
           {displayed.length === 0 ? (
             <Card>
               <p className="py-4 text-center text-sm text-gray-400">
-                No {entity}s found. Create one to get started.
+                No {title?.toLowerCase() || entity} found. Create one to get started.
               </p>
             </Card>
           ) : (

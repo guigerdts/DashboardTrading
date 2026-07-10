@@ -71,11 +71,12 @@ describe('CatalogAdmin — F1: Admin list renders catalog elements', () => {
     expect(screen.getByText(/manage your trading strategies/i)).toBeInTheDocument();
   });
 
-  it('renders table with catalog items', () => {
+  it('renders table with active catalog items (archived items hidden by default)', () => {
     renderWithWrapper(<StrategiesPage />);
     expect(screen.getByText('Trend Following')).toBeInTheDocument();
     expect(screen.getByText('Mean Reversion')).toBeInTheDocument();
-    expect(screen.getByText('Scalping')).toBeInTheDocument();
+    // Scalping has is_active=false so it's hidden by default
+    expect(screen.queryByText('Scalping')).not.toBeInTheDocument();
   });
 
   it('shows column headers for name and description', () => {
@@ -115,7 +116,7 @@ describe('CatalogAdmin — F1: Admin list renders catalog elements', () => {
   it('shows empty state when no items exist', () => {
     useCatalogList.mockReturnValue(createMockListResult([]));
     renderWithWrapper(<StrategiesPage />);
-    expect(screen.getByText(/no strategies found/i)).toBeInTheDocument();
+    expect(screen.getByText(/no strategies/i)).toBeInTheDocument();
   });
 
   it('shows error fallback on query error', () => {
@@ -127,7 +128,7 @@ describe('CatalogAdmin — F1: Admin list renders catalog elements', () => {
       refetch: vi.fn(),
     });
     renderWithWrapper(<StrategiesPage />);
-    expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
+    expect(screen.getByText('Network error')).toBeInTheDocument();
     expect(screen.getByText('Retry')).toBeInTheDocument();
   });
 });
@@ -205,6 +206,7 @@ describe('CatalogAdmin — F2: Create/edit form submits correct payload', () => 
     await userEvent.click(screen.getByText('Update'));
 
     await waitFor(() => {
+      // Strategy entities do NOT include category/color — those are tag-only fields
       expect(mockUpdate).toHaveBeenCalledWith({
         id: 1,
         name: 'Trend Following Updated',
@@ -298,10 +300,7 @@ describe('CatalogAdmin — F3: Archive removes from active list', () => {
   it('shows error when archive fails', async () => {
     useCatalogArchive.mockReturnValue({
       ...createMockMutation(),
-      mutateAsync: vi.fn().mockRejectedValue({
-        data: {},
-        message: 'Failed to archive',
-      }),
+      mutateAsync: vi.fn().mockRejectedValue(new Error('Failed to archive')),
     });
 
     renderWithWrapper(<StrategiesPage />);
