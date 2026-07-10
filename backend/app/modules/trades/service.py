@@ -8,6 +8,8 @@ BR-12:  Trades past their ``editable_until`` window cannot be modified.
 BR-29:  DELETE sets ``is_active=False``, does NOT change ``status``.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import UTC, datetime, timedelta
 
@@ -15,12 +17,18 @@ from app.core.exceptions import BusinessRuleError, NotFoundError
 from app.db.unit_of_work import UnitOfWork
 from app.models.trade import Trade
 from app.modules.trades.schemas import (
+    MistakeSyncItem,
     ReviewUpdate,
     TradeClose,
     TradeCreate,
     TradeFilters,
     TradeUpdate,
 )
+
+
+def _safe_catalog_name(rel) -> str | None:
+    """Return the name attribute of a related object, or None."""
+    return rel.name if rel is not None else None
 
 
 def _compute_editable_until(status: str, entry_datetime: datetime | None = None) -> str | None:
@@ -166,6 +174,25 @@ class TradeService:
                 take_profit=trade.take_profit,
             )
 
+        # Validate strategy/setup references if changed
+        if "strategy_id" in update_data and update_data["strategy_id"] is not None:
+            from app.modules.catalogs.service import CatalogService
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.models.strategy import Strategy
+
+            strat_svc = CatalogService(CatalogRepository(self.uow._session, Strategy))
+            await strat_svc.get(update_data["strategy_id"])
+            await strat_svc.validate_active_ids([update_data["strategy_id"]])
+
+        if "setup_id" in update_data and update_data["setup_id"] is not None:
+            from app.modules.catalogs.service import CatalogService
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.models.strategy import Setup
+
+            setup_svc = CatalogService(CatalogRepository(self.uow._session, Setup))
+            await setup_svc.get(update_data["setup_id"])
+            await setup_svc.validate_active_ids([update_data["setup_id"]])
+
         trade.updated_at = datetime.now(UTC).isoformat()
         self.logger.info("Updated trade id=%d fields=%s", id, set(update_data.keys()))
         return trade
@@ -235,6 +262,22 @@ class TradeService:
             except (ValueError, TypeError):
                 pass
 
+        # Build tags list (from selectinload eager join)
+        tags_data = [
+            {"id": t.id, "name": t.name}
+            for t in getattr(trade, "tags", []) or []
+        ]
+
+        # Build mistakes list with notes (from selectinload eager join)
+        mistakes_data = [
+            {
+                "id": me.mistake_id,
+                "name": me.mistake.name if hasattr(me, "mistake") and me.mistake else None,
+                "note": me.notes,
+            }
+            for me in getattr(trade, "mistakes", []) or []
+        ]
+
         review = await self.uow.trades.get_review(id)
         review_data = None
         if review is not None:
@@ -271,7 +314,11 @@ class TradeService:
             "asset_symbol": trade.asset.symbol if trade.asset else None,
             "account_name": trade.account.name if trade.account else None,
             "strategy_id": trade.strategy_id,
+            "strategy_name": _safe_catalog_name(getattr(trade, "strategy", None)),
             "setup_id": trade.setup_id,
+            "setup_name": _safe_catalog_name(getattr(trade, "setup", None)),
+            "tags": tags_data,
+            "mistakes": mistakes_data,
             "editable_until": trade.editable_until,
             "notes_override": trade.notes_override,
             "is_active": bool(trade.is_active),
@@ -283,6 +330,100 @@ class TradeService:
             "return_pct": return_pct,
             "review": review_data,
         }
+
+    # ------------------------------------------------------------------
+    # Context classification (tags, mistakes, strategy/setup)
+    # ------------------------------------------------------------------
+
+    async def sync_tags(self, id: int, tag_ids: list[int]) -> Trade:
+        """Replace all tag associations for a trade (full-replacement).
+
+        Validates:
+        - Trade exists (404)
+        - Trade is editable (BR-12)
+        - All tag IDs exist and are active (422 if archived)
+
+        Uses replace semantics: old tags not in ``tag_ids`` are removed.
+        An empty list clears all tags.
+        """
+        trade = await self.get(id)
+        self._validate_editable(trade)
+
+        # Validate all tag IDs exist and are active
+        if tag_ids:
+            from app.modules.catalogs.service import CatalogService
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.models.tag import Tag
+
+            cat_svc = CatalogService(CatalogRepository(self.uow._session, Tag))
+            await cat_svc.validate_active_ids(tag_ids)
+
+        await self.uow.trades.sync_tags(id, tag_ids)
+        self.logger.info("Synced tags for trade id=%d tags=%s", id, tag_ids)
+        return await self.get(id)
+
+    async def sync_mistakes(self, id: int, mistakes: list[dict]) -> Trade:
+        """Replace all mistake associations for a trade (full-replacement).
+
+        Each entry in ``mistakes`` is a dict with ``id`` (int, required)
+        and ``note`` (str, optional). Notes are stored in the pivot row.
+
+        Validates:
+        - Trade exists (404)
+        - Trade is editable (BR-12)
+        - All mistake IDs exist and are active (422 if archived)
+        """
+        trade = await self.get(id)
+        self._validate_editable(trade)
+
+        # Extract IDs for validation
+        mistake_ids = [m["id"] for m in mistakes]
+
+        # Validate all mistake IDs exist and are active
+        if mistake_ids:
+            from app.modules.catalogs.service import CatalogService
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.models.mistake import Mistake
+
+            cat_svc = CatalogService(CatalogRepository(self.uow._session, Mistake))
+            await cat_svc.validate_active_ids(mistake_ids)
+
+        await self.uow.trades.sync_mistakes(id, mistakes)
+        self.logger.info("Synced mistakes for trade id=%s", id)
+        return await self.get(id)
+
+    async def update_context(self, id: int, strategy_id: int | None = None, setup_id: int | None = None) -> Trade:
+        """Update a trade's strategy and/or setup references.
+
+        Validates:
+        - Trade exists (404)
+        - Trade is editable (BR-12)
+        - Referenced entities exist (404) and are active (422 if archived)
+
+        Only fields that are not None are updated.
+        """
+        trade = await self.get(id)
+        self._validate_editable(trade)
+
+        from app.modules.catalogs.service import CatalogService
+        from app.modules.catalogs.repository import CatalogRepository
+        from app.models.strategy import Strategy, Setup
+
+        if strategy_id is not None:
+            strat_svc = CatalogService(CatalogRepository(self.uow._session, Strategy))
+            await strat_svc.get(strategy_id)  # 404 if not found
+            await strat_svc.validate_active_ids([strategy_id])
+            trade.strategy_id = strategy_id
+
+        if setup_id is not None:
+            setup_svc = CatalogService(CatalogRepository(self.uow._session, Setup))
+            await setup_svc.get(setup_id)  # 404 if not found
+            await setup_svc.validate_active_ids([setup_id])
+            trade.setup_id = setup_id
+
+        trade.updated_at = datetime.now(UTC).isoformat()
+        self.logger.info("Updated context trade id=%d", id)
+        return trade
 
     async def get_review(self, id: int) -> dict | None:
         """Return the review for a trade, or a dict with null fields."""

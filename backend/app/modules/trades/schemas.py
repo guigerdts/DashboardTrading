@@ -13,6 +13,52 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.modules.shared.pagination import PaginationParams
 
 
+class TagRef(BaseModel):
+    """Reference to a Tag in trade context responses."""
+
+    id: int
+    name: str
+
+
+class MistakeRef(BaseModel):
+    """Reference to a Mistake in trade context responses, with optional note."""
+
+    id: int
+    name: str | None = None
+    note: str | None = None
+
+
+class MistakeSyncItem(BaseModel):
+    """A single mistake to sync, with optional note.
+
+    ``id`` is the Mistake catalog entity ID.
+    ``note`` is an optional per-instance annotation stored in the pivot row.
+    """
+
+    id: int
+    note: str | None = None
+
+
+class TagSyncRequest(BaseModel):
+    """Request body for ``PUT /api/trades/{id}/tags``.
+
+    Wraps a list of tag IDs in a model so FastAPI can parse it without
+    requiring ``python-multipart``.
+    """
+
+    tag_ids: list[int]
+
+
+class MistakeSyncRequest(BaseModel):
+    """Request body for ``PUT /api/trades/{id}/mistakes``.
+
+    Wraps a list of mistake sync items in a model so FastAPI can parse
+    it without requiring ``python-multipart``.
+    """
+
+    mistakes: list[MistakeSyncItem]
+
+
 class TradeFilters(PaginationParams):
     """Query parameters for filtering the trades list endpoint.
 
@@ -87,6 +133,8 @@ class TradeUpdate(BaseModel):
     broker_id: int | None = None
     market_session_id: int | None = None
     timeframe_id: int | None = None
+    strategy_id: int | None = None
+    setup_id: int | None = None
 
 
 class TradeClose(BaseModel):
@@ -149,13 +197,18 @@ class TradeResponse(BaseModel):
 class TradeDetailResponse(TradeResponse):
     """Enriched trade detail response for the detail page.
 
-    Extends ``TradeResponse`` with computed fields and related data
-    loaded via eager joins in the repository layer.
+    Extends ``TradeResponse`` with computed fields, related data
+    loaded via eager joins in the repository layer, and trade context
+    classification (strategy, setup, tags, mistakes).
     """
 
     account_name: str | None = None
     strategy_id: int | None = None
+    strategy_name: str | None = None
     setup_id: int | None = None
+    setup_name: str | None = None
+    tags: list[TagRef] = []
+    mistakes: list[MistakeRef] = []
     duration_hours: float | None = None
     net_pnl: float | None = None
     return_pct: float | None = None

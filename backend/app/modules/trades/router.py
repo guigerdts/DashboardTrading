@@ -1,4 +1,4 @@
-"""Trades module router — full CRUD + close + detail + review endpoints.
+"""Trades module router — full CRUD + close + detail + review + context endpoints.
 
 Endpoints
 ---------
@@ -11,6 +11,8 @@ Endpoints
 - POST   /api/trades/{id}/close  → TradeResponse
 - GET    /api/trades/{id}/review → ReviewResponse
 - PUT    /api/trades/{id}/review → ReviewResponse         (upsert)
+- PUT    /api/trades/{id}/tags   → TradeDetailResponse    (sync tags)
+- PUT    /api/trades/{id}/mistakes → TradeDetailResponse  (sync mistakes)
 """
 
 from fastapi import APIRouter, Depends
@@ -18,8 +20,10 @@ from fastapi import APIRouter, Depends
 from app.db.dependencies import get_trade_service
 from app.modules.shared.pagination import PaginatedResponse
 from app.modules.trades.schemas import (
+    MistakeSyncRequest,
     ReviewResponse,
     ReviewUpdate,
+    TagSyncRequest,
     TradeClose,
     TradeCreate,
     TradeDetailResponse,
@@ -159,3 +163,35 @@ async def close_trade(
     Sets 30-day ``editable_until`` window (BR-12).
     """
     return await svc.close(id, dto)
+
+
+@router.put("/{id}/tags", response_model=TradeDetailResponse)
+async def sync_trade_tags(
+    id: int,
+    body: TagSyncRequest,
+    svc: TradeService = Depends(get_trade_service),
+):
+    """Replace all tag associations for a trade (full-replacement).
+
+    Sending an empty list clears all tags. Returns 409 if any tag name
+    already exists. Returns 422 if any tag is archived.
+    """
+    await svc.sync_tags(id, body.tag_ids)
+    return await svc.get_detail(id)
+
+
+@router.put("/{id}/mistakes", response_model=TradeDetailResponse)
+async def sync_trade_mistakes(
+    id: int,
+    body: MistakeSyncRequest,
+    svc: TradeService = Depends(get_trade_service),
+):
+    """Replace all mistake associations for a trade (full-replacement).
+
+    Each mistake entry may include an optional ``note``.
+    Sending an empty list clears all mistakes.
+    Returns 422 if any mistake is archived.
+    """
+    mistake_dicts = [m.model_dump() for m in body.mistakes]
+    await svc.sync_mistakes(id, mistake_dicts)
+    return await svc.get_detail(id)

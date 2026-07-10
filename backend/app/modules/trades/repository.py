@@ -3,12 +3,15 @@
 Extends ``SqlAlchemyRepository[Trade]``. No business logic — pure data access.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 
-from sqlalchemy import case, exists, func, or_, select
-from sqlalchemy.orm import contains_eager, joinedload
+from sqlalchemy import case, delete, exists, func, insert, or_, select
+from sqlalchemy.orm import contains_eager, joinedload, selectinload
 
 from app.models.asset import Asset
+from app.models.psychology import MistakeEntry, TradeTag
 from app.models.review import TradeReview
 from app.models.trade import Trade
 from app.modules.shared.base import SqlAlchemyRepository
@@ -198,7 +201,13 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         return items, total
 
     async def get_with_relations(self, id: int) -> Trade | None:
-        """Retrieve a trade with eager-loaded account, asset, and review EXISTS.
+        """Retrieve a trade with eager-loaded relations.
+
+        Loads:
+        - account, asset (joinedload — FK references)
+        - strategy, setup (joinedload — FK references)
+        - tags via trade_tags pivot (selectinload — M:N)
+        - mistakes via mistake_entries pivot (selectinload — 1:N)
 
         Returns ``None`` (not 404) if not found — the service layer handles
         the ``NotFoundError`` for consistency with ``get()``.
@@ -208,7 +217,14 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         )
         stmt = (
             select(Trade, has_review_expr)
-            .options(joinedload(Trade.account), joinedload(Trade.asset))
+            .options(
+                joinedload(Trade.account),
+                joinedload(Trade.asset),
+                joinedload(Trade.strategy),
+                joinedload(Trade.setup),
+                selectinload(Trade.tags),
+                selectinload(Trade.mistakes),
+            )
             .where(Trade.id == id)
         )
         row = (await self._session.execute(stmt)).unique().one_or_none()
@@ -217,6 +233,65 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         trade = row[0]
         setattr(trade, "has_review", bool(row[1]))
         return trade
+
+    # ------------------------------------------------------------------
+    # Pivot sync methods
+    # ------------------------------------------------------------------
+
+    async def sync_tags(self, trade_id: int, tag_ids: list[int]) -> None:
+        """Replace all tag associations for a trade.
+
+        DELETE existing ``trade_tags`` rows, INSERT new ones.
+        This is a full-replacement operation — old tags not in ``tag_ids``
+        are removed, even if ``tag_ids`` is empty.
+
+        Duplicate ``tag_ids`` are silently deduplicated.
+
+        Caller must validate all tag IDs exist and are active before calling.
+        """
+        # Delete existing
+        await self._session.execute(
+            delete(TradeTag).where(TradeTag.trade_id == trade_id)
+        )
+        # Insert new (deduplicated)
+        unique_ids = sorted(set(tag_ids))
+        if unique_ids:
+            await self._session.execute(
+                insert(TradeTag),
+                [{"trade_id": trade_id, "tag_id": tid} for tid in unique_ids],
+            )
+
+    async def sync_mistakes(
+        self, trade_id: int, mistakes: list[dict]
+    ) -> None:
+        """Replace all mistake associations for a trade.
+
+        Each entry in ``mistakes`` is a dict with ``id`` (int, required)
+        and ``note`` (str, optional). The note is stored in the pivot row's
+        ``notes`` column (``mistake_entries.notes``).
+
+        This is a full-replacement operation — old mistakes not in the list
+        are removed, even if ``mistakes`` is empty.
+
+        Caller must validate all mistake IDs exist and are active before calling.
+        """
+        # Delete existing
+        await self._session.execute(
+            delete(MistakeEntry).where(MistakeEntry.trade_id == trade_id)
+        )
+        # Insert new
+        if mistakes:
+            await self._session.execute(
+                insert(MistakeEntry),
+                [
+                    {
+                        "trade_id": trade_id,
+                        "mistake_id": m["id"],
+                        "notes": m.get("note"),
+                    }
+                    for m in mistakes
+                ],
+            )
 
     async def get_review(self, trade_id: int) -> TradeReview | None:
         """Return the first ``TradeReview`` for a trade, or ``None``."""
