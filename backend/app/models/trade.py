@@ -19,6 +19,10 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 if TYPE_CHECKING:
     from app.models.account import Account
     from app.models.asset import Asset
+    from app.models.mistake import Mistake
+    from app.models.psychology import MistakeEntry
+    from app.models.strategy import Setup, Strategy
+    from app.models.tag import Tag
 
 
 class Trade(Base, TimestampMixin, SoftDeleteMixin):
@@ -77,6 +81,27 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
         "Asset",
         lazy="raise",
     )
+    strategy: Mapped[Strategy | None] = relationship(
+        "Strategy",
+        lazy="raise",
+    )
+    setup: Mapped[Setup | None] = relationship(
+        "Setup",
+        lazy="raise",
+    )
+
+    # Many-to-many via trade_tags junction
+    tags: Mapped[list[Tag]] = relationship(
+        "Tag",
+        secondary="trade_tags",
+        lazy="raise",
+    )
+
+    # One-to-many via mistake_entries junction (carries per-row note)
+    mistakes: Mapped[list["MistakeEntry"]] = relationship(
+        "MistakeEntry",
+        lazy="raise",
+    )
 
     # ------------------------------------------------------------------
     # Direction & status (CHECK-enforced enums)
@@ -120,15 +145,13 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     timeframe_id: Mapped[int | None] = mapped_column(
         ForeignKey("timeframes.id", ondelete="SET NULL"), nullable=True
     )
-    # NOTE: FKs to future tables (PR 3 / PR 4).
-    # SQLAlchemy ForeignKey is omitted here because the referenced tables
-    # (strategies, setups, risk_profiles, trading_sessions) don't exist yet.
-    # The FK constraints ARE added inline in the hand-edited migration so they
-    # exist at CREATE TABLE time — required because SQLite cannot ALTER TABLE
-    # ADD CONSTRAINT later. The ORM-level FK metadata gap is acceptable since
-    # relationships are not defined in this phase.
-    strategy_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    setup_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # PR 1: strategy and setup catalogs now exist — FK constraints enabled.
+    strategy_id: Mapped[int | None] = mapped_column(
+        ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True
+    )
+    setup_id: Mapped[int | None] = mapped_column(
+        ForeignKey("setups.id", ondelete="SET NULL"), nullable=True
+    )
     risk_profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     trading_session_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

@@ -1,11 +1,8 @@
-"""Psychology domain models — Emotion, Tag, Mistake catalogs and entry/junction tables.
+"""Psychology domain models — Emotion catalog and emotion entry/junction tables.
 
-Catalog tables (Emotion, Tag, Mistake) are simple lookups with ``(id, name, created_at)``.
-Entry tables (EmotionEntry, MistakeEntry) link trades to catalog entries with per-instance
-metadata. TradeTag is a pure M:N junction between Trade and Tag.
-
-All catalog tables follow the same pattern as ``catalogs.py`` — ``Base`` only,
-no ``TimestampMixin``, no ``SoftDeleteMixin`` (per C4).
+Entry tables (EmotionEntry) link trades to catalog entries with per-instance
+metadata. TradeTag and MistakeEntry remain here as pivot tables referencing
+external Tag/Mistake models.
 
 Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
@@ -70,22 +67,6 @@ class EmotionEntry(Base):
     )
 
 
-class Tag(Base):
-    """Catalog of free-form tags for trade annotation.
-
-    References
-    ----------
-    - BR-19: ``name`` UNIQUE via ``uq_tags_name``
-    - BR-21: non-empty trimmed (service-enforced)
-    """
-
-    __tablename__ = "tags"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False, default=_utcnow)
-
-
 class TradeTag(Base):
     """M:N junction between Trade and Tag.
 
@@ -109,23 +90,6 @@ class TradeTag(Base):
     __table_args__ = (
         sa.Index("ix_trade_tags_tag_id", "tag_id"),
     )
-
-
-class Mistake(Base):
-    """Catalog of trading mistake types (e.g. fomo, revenge_trading, overtrading).
-
-    Seeded catalog — read-only after seed. No ``updated_at`` per C4.
-
-    References
-    ----------
-    - BR-20: ``name`` UNIQUE via ``uq_mistakes_name``
-    """
-
-    __tablename__ = "mistakes"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False, default=_utcnow)
 
 
 class MistakeEntry(Base):
