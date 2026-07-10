@@ -53,7 +53,9 @@ class AssetService:
         await self.uow.assets.add(asset)
         self.logger.info(
             "Created asset id=%d symbol=%s market_id=%d",
-            asset.id, asset.symbol, asset.market_id,
+            asset.id,
+            asset.symbol,
+            asset.market_id,
         )
         return asset
 
@@ -95,12 +97,12 @@ class AssetService:
             new_symbol = update_data.get("symbol", asset.symbol)
             new_market_id = update_data.get("market_id", asset.market_id)
             existing = await self.uow.assets.get_by_symbol_market(
-                new_symbol, new_market_id,
+                new_symbol,
+                new_market_id,
             )
             if existing and existing.id != id:
                 raise ConflictError(
-                    f"Asset with symbol '{new_symbol}' and market_id "
-                    f"{new_market_id} already exists"
+                    f"Asset with symbol '{new_symbol}' and market_id {new_market_id} already exists"
                 )
 
         # Re-validate market exists if market_id changed

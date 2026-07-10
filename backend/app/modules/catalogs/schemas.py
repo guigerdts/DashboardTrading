@@ -6,7 +6,6 @@ response and request schemas. Tag extends with optional category and color.
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── Generic catalog schemas ──────────────────────────────────────────────
 
 

@@ -109,8 +109,8 @@ class UnitOfWork:
     def strategies(self) -> "CatalogRepository":  # type: ignore[empty-body]  # noqa: F821
         """Access the ``CatalogRepository`` for Strategy (lazy-init)."""
         if self._strategies is None:
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.strategy import Strategy
+            from app.modules.catalogs.repository import CatalogRepository
 
             self._strategies = CatalogRepository(self._session, Strategy)
         return self._strategies
@@ -119,8 +119,8 @@ class UnitOfWork:
     def setups(self) -> "CatalogRepository":  # type: ignore[empty-body]  # noqa: F821
         """Access the ``CatalogRepository`` for Setup (lazy-init)."""
         if self._setups is None:
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.strategy import Setup
+            from app.modules.catalogs.repository import CatalogRepository
 
             self._setups = CatalogRepository(self._session, Setup)
         return self._setups
@@ -129,8 +129,8 @@ class UnitOfWork:
     def tags(self) -> "CatalogRepository":  # type: ignore[empty-body]  # noqa: F821
         """Access the ``CatalogRepository`` for Tag (lazy-init)."""
         if self._tags is None:
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.tag import Tag
+            from app.modules.catalogs.repository import CatalogRepository
 
             self._tags = CatalogRepository(self._session, Tag)
         return self._tags
@@ -139,8 +139,8 @@ class UnitOfWork:
     def mistakes(self) -> "CatalogRepository":  # type: ignore[empty-body]  # noqa: F821
         """Access the ``CatalogRepository`` for Mistake (lazy-init)."""
         if self._mistakes is None:
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.mistake import Mistake
+            from app.modules.catalogs.repository import CatalogRepository
 
             self._mistakes = CatalogRepository(self._session, Mistake)
         return self._mistakes

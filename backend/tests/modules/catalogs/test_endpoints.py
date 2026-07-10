@@ -48,9 +48,7 @@ async def test_list_brokers(client):
 async def test_get_broker_existing(client):
     """``GET /api/brokers/{id}`` returns 200 for an existing broker."""
     # Create a broker first
-    create_resp = await client.post(
-        "/api/brokers", json={"name": "get_broker_test"}
-    )
+    create_resp = await client.post("/api/brokers", json={"name": "get_broker_test"})
     assert create_resp.status_code == 201
     broker_id = create_resp.json()["id"]
 
@@ -73,9 +71,7 @@ async def test_get_broker_not_found(client):
 @pytest.mark.asyncio
 async def test_create_broker(client):
     """``POST /api/brokers`` creates a broker and returns 201."""
-    response = await client.post(
-        "/api/brokers", json={"name": "new_broker_test"}
-    )
+    response = await client.post("/api/brokers", json={"name": "new_broker_test"})
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "new_broker_test"
@@ -87,15 +83,11 @@ async def test_create_broker(client):
 @pytest.mark.asyncio
 async def test_create_broker_duplicate_name(client):
     """``POST /api/brokers`` with duplicate name succeeds (BR-17)."""
-    resp1 = await client.post(
-        "/api/brokers", json={"name": "dup_broker_test"}
-    )
+    resp1 = await client.post("/api/brokers", json={"name": "dup_broker_test"})
     assert resp1.status_code == 201
 
     # Second broker with same name — should succeed with warning (BR-17)
-    resp2 = await client.post(
-        "/api/brokers", json={"name": "dup_broker_test"}
-    )
+    resp2 = await client.post("/api/brokers", json={"name": "dup_broker_test"})
     assert resp2.status_code == 201
     data = resp2.json()
     assert data["name"] == "dup_broker_test"

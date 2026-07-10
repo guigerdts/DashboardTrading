@@ -112,9 +112,7 @@ async def test_list_filter_by_search(uow):
 async def test_list_pagination(uow):
     """``list(page=2, page_size=1)`` returns the second page."""
     for i in range(3):
-        await uow.trades.add(
-            _make_trade(entry_datetime=f"2026-01-{3 - i:02d}T00:00:00")
-        )
+        await uow.trades.add(_make_trade(entry_datetime=f"2026-01-{3 - i:02d}T00:00:00"))
 
     # page_size=1, page=1 → newest first
     items_page1, total = await uow.trades.list(page=1, page_size=1)

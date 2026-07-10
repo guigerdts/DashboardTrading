@@ -27,6 +27,4 @@ class Mistake(Base, TimestampMixin, SoftDeleteMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        sa.UniqueConstraint("name", name="uq_mistakes_name"),
-    )
+    __table_args__ = (sa.UniqueConstraint("name", name="uq_mistakes_name"),)

@@ -7,7 +7,6 @@ on-the-fly per SSOT & C6 principles, Design §8).
 Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
 
-
 import sqlalchemy as sa
 from sqlalchemy import REAL, ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -33,16 +32,10 @@ class RiskProfile(Base, TimestampMixin, SoftDeleteMixin):
     strategy_id: Mapped[int | None] = mapped_column(
         ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True
     )
-    max_risk_per_trade: Mapped[float | None] = mapped_column(
-        REAL, nullable=True
-    )
-    position_sizing_method: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    max_risk_per_trade: Mapped[float | None] = mapped_column(REAL, nullable=True)
+    position_sizing_method: Mapped[str | None] = mapped_column(Text, nullable=True)
     max_daily_loss: Mapped[float | None] = mapped_column(REAL, nullable=True)
-    max_concurrent_trades: Mapped[int | None] = mapped_column(
-        Integer, nullable=True
-    )
+    max_concurrent_trades: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (
         sa.Index("ix_risk_profiles_strategy_id", "strategy_id"),  # FK index

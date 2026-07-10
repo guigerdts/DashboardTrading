@@ -19,7 +19,6 @@ from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 if TYPE_CHECKING:
     from app.models.account import Account
     from app.models.asset import Asset
-    from app.models.mistake import Mistake
     from app.models.psychology import MistakeEntry
     from app.models.strategy import Setup, Strategy
     from app.models.tag import Tag
@@ -98,7 +97,7 @@ class Trade(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # One-to-many via mistake_entries junction (carries per-row note)
-    mistakes: Mapped[list["MistakeEntry"]] = relationship(
+    mistakes: Mapped[list[MistakeEntry]] = relationship(
         "MistakeEntry",
         lazy="raise",
     )

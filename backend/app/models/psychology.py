@@ -56,9 +56,7 @@ class EmotionEntry(Base):
     created_at: Mapped[str] = mapped_column(Text, nullable=False, default=_utcnow)
 
     __table_args__ = (
-        sa.CheckConstraint(
-            "intensity BETWEEN 1 AND 10", name="ck_emotion_entries_intensity"
-        ),
+        sa.CheckConstraint("intensity BETWEEN 1 AND 10", name="ck_emotion_entries_intensity"),
         sa.CheckConstraint(
             "context IN ('before_entry', 'during_trade', 'after_exit')",
             name="ck_emotion_entries_context",
@@ -87,9 +85,7 @@ class TradeTag(Base):
         ForeignKey("tags.id", ondelete="RESTRICT"), primary_key=True
     )
 
-    __table_args__ = (
-        sa.Index("ix_trade_tags_tag_id", "tag_id"),
-    )
+    __table_args__ = (sa.Index("ix_trade_tags_tag_id", "tag_id"),)
 
 
 class MistakeEntry(Base):
@@ -112,6 +108,4 @@ class MistakeEntry(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[str] = mapped_column(Text, nullable=False, default=_utcnow)
 
-    __table_args__ = (
-        sa.Index("ix_mistake_entries_mistake_id", "mistake_id"),
-    )
+    __table_args__ = (sa.Index("ix_mistake_entries_mistake_id", "mistake_id"),)

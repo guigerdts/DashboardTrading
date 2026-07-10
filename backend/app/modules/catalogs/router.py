@@ -16,9 +16,6 @@ from app.db.dependencies import get_uow
 from app.modules.catalogs.schemas import (
     BrokerCreate,
     BrokerResponse,
-    CatalogCreate,
-    CatalogResponse,
-    CatalogUpdate,
     MarketResponse,
     MarketSessionResponse,
     MistakeCreate,
@@ -72,29 +69,29 @@ _ENTITY_MAP = {
 
 
 def _get_strategy_svc(uow=Depends(get_uow)):
-    from app.modules.catalogs.repository import CatalogRepository
     from app.models.strategy import Strategy
+    from app.modules.catalogs.repository import CatalogRepository
 
     return CatalogService(CatalogRepository(uow._session, Strategy))
 
 
 def _get_setup_svc(uow=Depends(get_uow)):
-    from app.modules.catalogs.repository import CatalogRepository
     from app.models.strategy import Setup
+    from app.modules.catalogs.repository import CatalogRepository
 
     return CatalogService(CatalogRepository(uow._session, Setup))
 
 
 def _get_tag_svc(uow=Depends(get_uow)):
-    from app.modules.catalogs.repository import CatalogRepository
     from app.models.tag import Tag
+    from app.modules.catalogs.repository import CatalogRepository
 
     return CatalogService(CatalogRepository(uow._session, Tag))
 
 
 def _get_mistake_svc(uow=Depends(get_uow)):
-    from app.modules.catalogs.repository import CatalogRepository
     from app.models.mistake import Mistake
+    from app.modules.catalogs.repository import CatalogRepository
 
     return CatalogService(CatalogRepository(uow._session, Mistake))
 
@@ -115,9 +112,9 @@ def _catalog_routes(entity: str):
 
     Produces routes at ``/api/{entity}s`` (note the automatic pluralization).
     """
-    prefix = f"/api/{entity.lower()}s"
-    ep = _ENTITY_MAP[entity]
-    svc_dep = _SERVICE_MAP[entity]
+    f"/api/{entity.lower()}s"
+    _ENTITY_MAP[entity]
+    _SERVICE_MAP[entity]
 
     # Only attach the prefix router to the module router ONCE (below)
     # -- these endpoint functions are registered directly on the module router.

@@ -57,9 +57,7 @@ async def test_qc01_repo_add_does_not_commit(async_engine) -> None:
         # Assert — the entity should NOT be in the database
         async with AsyncSession(async_engine) as check_session:
             check = await check_session.get(Market, result.id)
-            assert check is None, (
-                "Market persisted despite rollback — add() must have committed!"
-            )
+            assert check is None, "Market persisted despite rollback — add() must have committed!"
     finally:
         await connection.close()
 
@@ -199,9 +197,7 @@ async def test_auto_rollback_on_exception(async_engine, db_session) -> None:
 
     # Verify NO data persisted
     async with AsyncSession(async_engine) as verify_session:
-        result = await verify_session.execute(
-            select(Market).where(Market.name == "rollback_test")
-        )
+        result = await verify_session.execute(select(Market).where(Market.name == "rollback_test"))
         assert result.scalar_one_or_none() is None, (
             "Market should NOT have been committed — rollback must have occurred"
         )

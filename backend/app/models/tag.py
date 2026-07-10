@@ -29,6 +29,4 @@ class Tag(Base, TimestampMixin, SoftDeleteMixin):
     category: Mapped[str | None] = mapped_column(Text, nullable=True)
     color: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (
-        sa.UniqueConstraint("name", name="uq_tags_name"),
-    )
+    __table_args__ = (sa.UniqueConstraint("name", name="uq_tags_name"),)

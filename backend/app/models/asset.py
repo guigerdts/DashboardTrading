@@ -3,7 +3,6 @@
 Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
 
-
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -32,6 +31,8 @@ class Asset(Base, TimestampMixin, SoftDeleteMixin):
 
     __table_args__ = (
         sa.UniqueConstraint(
-            "symbol", "market_id", name="uq_assets_symbol_market"  # BR-16
+            "symbol",
+            "market_id",
+            name="uq_assets_symbol_market",  # BR-16
         ),
     )

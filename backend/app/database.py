@@ -30,6 +30,7 @@ def _set_foreign_keys(dbapi_connection, _connection_record) -> None:
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.close()
 
+
 async_session_factory = async_sessionmaker(
     engine,
     class_=AsyncSession,

@@ -138,9 +138,7 @@ class CatalogService:
     async def _assert_unique_name(self, name: str, exclude_id: int | None = None) -> None:
         """Raise ``ConflictError`` if the name is already taken (case-insensitive)."""
         if await self.repo.exists_by_name(name, exclude_id=exclude_id):
-            raise ConflictError(
-                f"{self._entity_name} with name '{name}' already exists"
-            )
+            raise ConflictError(f"{self._entity_name} with name '{name}' already exists")
 
 
 # ── Legacy services (backward compatibility) ─────────────────────────────
@@ -190,8 +188,7 @@ class BrokerService:
         existing = await self.uow.brokers.get_by_name(dto.name)
         if existing:
             logger.warning(
-                "BR-17: Broker with name '%s' already exists (id=%d), "
-                "allowing creation",
+                "BR-17: Broker with name '%s' already exists (id=%d), allowing creation",
                 dto.name,
                 existing.id,
             )

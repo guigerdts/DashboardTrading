@@ -93,6 +93,4 @@ class Attachment(Base, SoftDeleteMixin):
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[str] = mapped_column(Text, nullable=False, default=_utcnow)
 
-    __table_args__ = (
-        sa.CheckConstraint("type IN ('image')", name="ck_attachments_type"),
-    )
+    __table_args__ = (sa.CheckConstraint("type IN ('image')", name="ck_attachments_type"),)

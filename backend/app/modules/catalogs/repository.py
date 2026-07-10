@@ -8,14 +8,10 @@ Existing per-entity repositories (Market, MarketSession, Timeframe, Broker)
 are kept for backward compatibility.
 """
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 
 from app.models.catalogs import Broker, Market, MarketSession, Timeframe
-from app.models.mistake import Mistake
-from app.models.strategy import Setup, Strategy
-from app.models.tag import Tag
 from app.modules.shared.base import SqlAlchemyRepository
-
 
 # ── Generic parameterized catalog repository ────────────────────────────
 
@@ -36,11 +32,7 @@ class CatalogRepository(SqlAlchemyRepository):
 
     async def list_active(self) -> list:
         """Return all active entities ordered by name ASC."""
-        stmt = (
-            select(self._entity)
-            .where(self._entity.is_active == 1)
-            .order_by(self._entity.name)
-        )
+        stmt = select(self._entity).where(self._entity.is_active == 1).order_by(self._entity.name)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
@@ -55,9 +47,7 @@ class CatalogRepository(SqlAlchemyRepository):
 
     async def get_by_name(self, name: str):
         """Return an entity by exact (case-insensitive) name match, or None."""
-        stmt = select(self._entity).where(
-            func.lower(self._entity.name) == func.lower(name)
-        )
+        stmt = select(self._entity).where(func.lower(self._entity.name) == func.lower(name))
         return (await self._session.execute(stmt)).scalar_one_or_none()
 
     async def exists_by_name(self, name: str, exclude_id: int | None = None) -> bool:
@@ -67,8 +57,10 @@ class CatalogRepository(SqlAlchemyRepository):
         (used for update operations where the entity's own name should not
         trigger a duplicate).
         """
-        stmt = select(func.count()).select_from(self._entity).where(
-            func.lower(self._entity.name) == func.lower(name)
+        stmt = (
+            select(func.count())
+            .select_from(self._entity)
+            .where(func.lower(self._entity.name) == func.lower(name))
         )
         if exclude_id is not None:
             stmt = stmt.where(self._entity.id != exclude_id)
@@ -138,11 +130,7 @@ class BrokerRepository(SqlAlchemyRepository[Broker]):
 
     async def list_all(self) -> list[Broker]:
         """Return all active brokers ordered by name."""
-        stmt = (
-            select(Broker)
-            .where(Broker.is_active == 1)
-            .order_by(Broker.name)
-        )
+        stmt = select(Broker).where(Broker.is_active == 1).order_by(Broker.name)
         return list((await self._session.execute(stmt)).scalars().all())
 
     async def get_by_name(self, name: str) -> Broker | None:

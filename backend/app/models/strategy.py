@@ -6,7 +6,6 @@ junction table. Both are soft-deletable entities with unique names.
 Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
 
-
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,7 +25,8 @@ class Strategy(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(
-        Text, nullable=False  # BR-14 — enforced by uq_strategies_name
+        Text,
+        nullable=False,  # BR-14 — enforced by uq_strategies_name
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
@@ -47,7 +47,8 @@ class Setup(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(
-        Text, nullable=False  # BR-15 — enforced by uq_setups_name
+        Text,
+        nullable=False,  # BR-15 — enforced by uq_setups_name
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 

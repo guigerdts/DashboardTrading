@@ -144,9 +144,7 @@ def _setup_parents(conn) -> None:
         text(f"INSERT INTO mistakes (id, name, created_at) VALUES (900, 'test_mistake', {ts})")
     )
     # Tag
-    conn.execute(
-        text(f"INSERT INTO tags (id, name, created_at) VALUES (900, 'test_tag', {ts})")
-    )
+    conn.execute(text(f"INSERT INTO tags (id, name, created_at) VALUES (900, 'test_tag', {ts})"))
     # TradingSession (has is_active NOT NULL)
     conn.execute(
         text(
@@ -319,15 +317,10 @@ class TestFullDomainIntegrity:
         (Design §5) and check every explicit ``ix_`` index by name.
         """
         rows = conn.execute(
-            text(
-                "SELECT name FROM sqlite_master "
-                "WHERE type='index' ORDER BY name"
-            )
+            text("SELECT name FROM sqlite_master WHERE type='index' ORDER BY name")
         ).fetchall()
         index_names = {r[0] for r in rows}
-        assert len(index_names) >= 28, (
-            f"Got {len(index_names)} indexes, expected >= 28"
-        )
+        assert len(index_names) >= 28, f"Got {len(index_names)} indexes, expected >= 28"
         for idx in EXPECTED_IX_INDEXES:
             assert idx in index_names, f"Missing index: {idx}"
 
@@ -363,9 +356,7 @@ class TestFullDomainIntegrity:
         _setup_parents(conn)
         _create_trade(conn)
         # Verify the trade was inserted
-        count = conn.execute(
-            text("SELECT COUNT(*) FROM trades WHERE id = 901")
-        ).scalar()
+        count = conn.execute(text("SELECT COUNT(*) FROM trades WHERE id = 901")).scalar()
         assert count == 1
 
     # -- 5.6 FK CASCADE ----------------------------------------------------
@@ -409,55 +400,54 @@ class TestFullDomainIntegrity:
                 f"VALUES (901, '/tmp/test.png', 'image', {_TS}, 1, 0)"
             )
         )
-        conn.execute(
-            text(
-                "INSERT INTO trade_tags (trade_id, tag_id) "
-                "VALUES (901, 900)"
-            )
-        )
+        conn.execute(text("INSERT INTO trade_tags (trade_id, tag_id) VALUES (901, 900)"))
 
         # Verify children exist before cascade
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM emotion_entries WHERE trade_id = 901")
-        ).scalar() == 1
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM mistake_entries WHERE trade_id = 901")
-        ).scalar() == 1
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM notes WHERE trade_id = 901")
-        ).scalar() == 1
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM trade_reviews WHERE trade_id = 901")
-        ).scalar() == 1
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM attachments WHERE trade_id = 901")
-        ).scalar() == 1
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM trade_tags WHERE trade_id = 901")
-        ).scalar() == 1
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM emotion_entries WHERE trade_id = 901")).scalar()
+            == 1
+        )
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM mistake_entries WHERE trade_id = 901")).scalar()
+            == 1
+        )
+        assert conn.execute(text("SELECT COUNT(*) FROM notes WHERE trade_id = 901")).scalar() == 1
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM trade_reviews WHERE trade_id = 901")).scalar()
+            == 1
+        )
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM attachments WHERE trade_id = 901")).scalar()
+            == 1
+        )
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM trade_tags WHERE trade_id = 901")).scalar() == 1
+        )
 
         # Delete the trade via direct SQL
         conn.execute(text("DELETE FROM trades WHERE id = 901"))
 
         # Verify all children cascade-deleted
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM emotion_entries WHERE trade_id = 901")
-        ).scalar() == 0
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM mistake_entries WHERE trade_id = 901")
-        ).scalar() == 0
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM notes WHERE trade_id = 901")
-        ).scalar() == 0
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM trade_reviews WHERE trade_id = 901")
-        ).scalar() == 0
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM attachments WHERE trade_id = 901")
-        ).scalar() == 0
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM trade_tags WHERE trade_id = 901")
-        ).scalar() == 0
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM emotion_entries WHERE trade_id = 901")).scalar()
+            == 0
+        )
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM mistake_entries WHERE trade_id = 901")).scalar()
+            == 0
+        )
+        assert conn.execute(text("SELECT COUNT(*) FROM notes WHERE trade_id = 901")).scalar() == 0
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM trade_reviews WHERE trade_id = 901")).scalar()
+            == 0
+        )
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM attachments WHERE trade_id = 901")).scalar()
+            == 0
+        )
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM trade_tags WHERE trade_id = 901")).scalar() == 0
+        )
 
     # -- 5.7 FK RESTRICT ---------------------------------------------------
 
@@ -486,9 +476,7 @@ class TestFullDomainIntegrity:
         """Delete tag with trade_tags → IntegrityError."""
         _setup_parents(conn)
         _create_trade(conn)
-        conn.execute(
-            text("INSERT INTO trade_tags (trade_id, tag_id) VALUES (901, 900)")
-        )
+        conn.execute(text("INSERT INTO trade_tags (trade_id, tag_id) VALUES (901, 900)"))
         with pytest.raises(sa.exc.IntegrityError):
             conn.execute(text("DELETE FROM tags WHERE id = 900"))
 
@@ -507,41 +495,30 @@ class TestFullDomainIntegrity:
 
     # -- 5.8 FK SET NULL ---------------------------------------------------
 
-    def _test_set_null(self, conn, parent_table: str, parent_id_col: str,
-                       parent_id: int) -> None:
+    def _test_set_null(self, conn, parent_table: str, parent_id_col: str, parent_id: int) -> None:
         """Helper: delete a parent row and verify FK is NULLed on trades."""
-        conn.execute(
-            text(f"DELETE FROM {parent_table} WHERE id = {parent_id}")
-        )
-        result = conn.execute(
-            text(
-                f"SELECT {parent_id_col} FROM trades WHERE id = 901"
-            )
-        ).scalar()
+        conn.execute(text(f"DELETE FROM {parent_table} WHERE id = {parent_id}"))
+        result = conn.execute(text(f"SELECT {parent_id_col} FROM trades WHERE id = 901")).scalar()
         assert result is None, f"{parent_id_col} should be NULL after parent delete"
 
     def test_fk_set_null_trading_session(self, conn):
         _setup_parents(conn)
-        _create_trade(conn, extra_cols=", trading_session_id",
-                     extra_vals=", 900")
+        _create_trade(conn, extra_cols=", trading_session_id", extra_vals=", 900")
         self._test_set_null(conn, "trading_sessions", "trading_session_id", 900)
 
     def test_fk_set_null_strategy(self, conn):
         _setup_parents(conn)
-        _create_trade(conn, extra_cols=", strategy_id",
-                     extra_vals=", 900")
+        _create_trade(conn, extra_cols=", strategy_id", extra_vals=", 900")
         self._test_set_null(conn, "strategies", "strategy_id", 900)
 
     def test_fk_set_null_risk_profile(self, conn):
         _setup_parents(conn)
-        _create_trade(conn, extra_cols=", risk_profile_id",
-                     extra_vals=", 900")
+        _create_trade(conn, extra_cols=", risk_profile_id", extra_vals=", 900")
         self._test_set_null(conn, "risk_profiles", "risk_profile_id", 900)
 
     def test_fk_set_null_setup(self, conn):
         _setup_parents(conn)
-        _create_trade(conn, extra_cols=", setup_id",
-                     extra_vals=", 900")
+        _create_trade(conn, extra_cols=", setup_id", extra_vals=", 900")
         self._test_set_null(conn, "setups", "setup_id", 900)
 
     # -- 5.9 Seed row counts -----------------------------------------------
@@ -549,59 +526,79 @@ class TestFullDomainIntegrity:
     def test_seed_row_counts(self, conn):
         """Verify each seeded catalog table has the expected row count."""
         for table, expected in SEED_COUNTS.items():
-            count = conn.execute(
-                text(f"SELECT COUNT(*) FROM {table}")
-            ).scalar()
-            assert count == expected, (
-                f"{table}: expected {expected} rows, got {count}"
-            )
+            count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
+            assert count == expected, f"{table}: expected {expected} rows, got {count}"
 
     # -- 5.10 Seed idempotency ---------------------------------------------
 
     def test_seed_idempotency(self, conn):
         """Re-inserting seed data via INSERT OR IGNORE does not change counts."""
         # Re-insert all markets
-        for name in ['forex', 'indices', 'commodities', 'crypto',
-                      'equities', 'bonds', 'etfs']:
+        for name in ["forex", "indices", "commodities", "crypto", "equities", "bonds", "etfs"]:
             conn.execute(
                 text("INSERT OR IGNORE INTO markets (name) VALUES (:n)"),
                 {"n": name},
             )
         # Re-insert all market_sessions
-        for name in ['asian', 'european', 'american',
-                      'asian_european_overlap', 'european_american_overlap',
-                      'weekend', 'opening_auction']:
+        for name in [
+            "asian",
+            "european",
+            "american",
+            "asian_european_overlap",
+            "european_american_overlap",
+            "weekend",
+            "opening_auction",
+        ]:
             conn.execute(
                 text("INSERT OR IGNORE INTO market_sessions (name) VALUES (:n)"),
                 {"n": name},
             )
         # Re-insert all timeframes
-        for name in ['M1', 'M5', 'M15', 'M30', 'H1', 'H2', 'H4', 'D1', 'W1', 'MN']:
+        for name in ["M1", "M5", "M15", "M30", "H1", "H2", "H4", "D1", "W1", "MN"]:
             conn.execute(
                 text("INSERT OR IGNORE INTO timeframes (name) VALUES (:n)"),
                 {"n": name},
             )
         # Re-insert all emotions
-        for name in ['calm', 'anxious', 'confident', 'fearful', 'greedy',
-                      'neutral', 'excited', 'frustrated', 'disappointed',
-                      'apathetic', 'hopeful', 'regretful']:
+        for name in [
+            "calm",
+            "anxious",
+            "confident",
+            "fearful",
+            "greedy",
+            "neutral",
+            "excited",
+            "frustrated",
+            "disappointed",
+            "apathetic",
+            "hopeful",
+            "regretful",
+        ]:
             conn.execute(
                 text("INSERT OR IGNORE INTO emotions (name) VALUES (:n)"),
                 {"n": name},
             )
         # Re-insert all mistakes
-        for name in ['fomo', 'revenge_trading', 'overtrading', 'no_stop_loss',
-                      'moving_stop_loss', 'holding_losers', 'cutting_winners',
-                      'ignoring_risk', 'bad_entry', 'no_plan', 'emotional_trading']:
+        for name in [
+            "fomo",
+            "revenge_trading",
+            "overtrading",
+            "no_stop_loss",
+            "moving_stop_loss",
+            "holding_losers",
+            "cutting_winners",
+            "ignoring_risk",
+            "bad_entry",
+            "no_plan",
+            "emotional_trading",
+        ]:
             conn.execute(
                 text("INSERT OR IGNORE INTO mistakes (name) VALUES (:n)"),
                 {"n": name},
             )
         # Verify counts unchanged
         for table, expected in SEED_COUNTS.items():
-            count = conn.execute(
-                text(f"SELECT COUNT(*) FROM {table}")
-            ).scalar()
+            count = conn.execute(text(f"SELECT COUNT(*) FROM {table}")).scalar()
             assert count == expected, (
                 f"{table}: expected {expected} rows after re-insert, got {count}"
             )
@@ -631,11 +628,11 @@ class TestFullDomainIntegrity:
 
         result = subprocess.run(
             [sys.executable, "-m", "alembic", "upgrade", "head"],
-            capture_output=True, text=True, cwd=os.path.dirname(__file__) + "/..",
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(__file__) + "/..",
         )
-        assert result.returncode == 0, (
-            f"alembic upgrade head failed:\n{result.stderr}"
-        )
+        assert result.returncode == 0, f"alembic upgrade head failed:\n{result.stderr}"
 
         # Verify tables
         e = sa.create_engine(f"sqlite:///{db_path}")

@@ -11,9 +11,8 @@ import pytest
 import pytest_asyncio
 
 from app.models.mistake import Mistake
-from app.models.strategy import Strategy, Setup
+from app.models.strategy import Setup, Strategy
 from app.models.tag import Tag
-
 
 # ── Fixtures ─────────────────────────────────────────────────────────────
 
@@ -63,17 +62,28 @@ async def seeded_mistakes(uow):
 async def trade_with_context(client, seeded_strategy, seeded_setup, seeded_tags, seeded_mistakes):
     """Create a trade and attach context via API."""
     # Create trade
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Set strategy/setup via PATCH
-    await client.patch(f"/api/trades/{trade_id}", json={
-        "strategy_id": seeded_strategy.id,
-        "setup_id": seeded_setup.id,
-    })
+    await client.patch(
+        f"/api/trades/{trade_id}",
+        json={
+            "strategy_id": seeded_strategy.id,
+            "setup_id": seeded_setup.id,
+        },
+    )
 
     # Sync tags
     tag_ids = [t.id for t in seeded_tags[:2]]  # tag_a, tag_b
@@ -96,10 +106,18 @@ async def trade_with_context(client, seeded_strategy, seeded_setup, seeded_tags,
 async def test_sync_tags_replace(client, seeded_tags):
     """PUT /api/trades/{id}/tags replaces old tags with new ones."""
     # Create a trade
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Add tag_a, tag_b
@@ -125,10 +143,18 @@ async def test_sync_tags_replace(client, seeded_tags):
 @pytest.mark.asyncio
 async def test_sync_tags_duplicate_prevention(client, seeded_tags):
     """Adding same tag twice via sync still results in one row (replace semantics)."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Add same tag twice in one call (should only result in one entry)
@@ -141,10 +167,18 @@ async def test_sync_tags_duplicate_prevention(client, seeded_tags):
 @pytest.mark.asyncio
 async def test_sync_tags_archived_422(client, uow, seeded_tags):
     """PUT /api/trades/{id}/tags with archived tag returns 422."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Archive a tag
@@ -174,10 +208,18 @@ async def test_sync_tags_clear_via_empty(client, trade_with_context):
 @pytest.mark.asyncio
 async def test_sync_mistakes_replace(client, seeded_mistakes):
     """PUT /api/trades/{id}/mistakes replaces old mistakes with new ones."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Add mistake_a
@@ -203,10 +245,18 @@ async def test_sync_mistakes_replace(client, seeded_mistakes):
 @pytest.mark.asyncio
 async def test_sync_mistakes_with_notes(client, seeded_mistakes):
     """PUT /api/trades/{id}/mistakes stores notes on pivot rows."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     mistakes_payload = [
@@ -225,10 +275,18 @@ async def test_sync_mistakes_with_notes(client, seeded_mistakes):
 @pytest.mark.asyncio
 async def test_sync_mistakes_archived_422(client, uow, seeded_mistakes):
     """PUT /api/trades/{id}/mistakes with archived mistake returns 422."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Archive a mistake
@@ -256,7 +314,9 @@ async def test_sync_mistakes_clear_via_empty(client, trade_with_context):
 
 
 @pytest.mark.asyncio
-async def test_trade_detail_strategy_setup_names(client, trade_with_context, seeded_strategy, seeded_setup):
+async def test_trade_detail_strategy_setup_names(
+    client, trade_with_context, seeded_strategy, seeded_setup
+):
     """GET /api/trades/{id} includes strategy_name and setup_name."""
     resp = await client.get(f"/api/trades/{trade_with_context}")
     assert resp.status_code == 200
@@ -297,10 +357,18 @@ async def test_trade_detail_mistakes_with_notes(client, trade_with_context):
 @pytest.mark.asyncio
 async def test_trade_detail_no_context(client):
     """GET /api/trades/{id} returns empty/null context when not set."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     resp = await client.get(f"/api/trades/{trade_id}")

@@ -9,7 +9,6 @@ Covers:
 
 import pytest
 
-
 # ── Shared helpers ───────────────────────────────────────────────────────
 
 CATALOG_ENDPOINTS = [

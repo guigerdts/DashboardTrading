@@ -90,15 +90,18 @@ async def test_list_trades_200(client):
     """``GET /api/trades`` returns paginated response."""
     # Create two trades first
     for i in range(2):
-        await client.post("/api/trades", json={
-            "account_id": 1,
-            "asset_id": 1,
-            "direction": "long",
-            "status": "open",
-            "entry_price": 100.0 + i,
-            "quantity": 1.0,
-            "entry_datetime": f"2026-01-{2 - i:02d}T00:00:00",
-        })
+        await client.post(
+            "/api/trades",
+            json={
+                "account_id": 1,
+                "asset_id": 1,
+                "direction": "long",
+                "status": "open",
+                "entry_price": 100.0 + i,
+                "quantity": 1.0,
+                "entry_datetime": f"2026-01-{2 - i:02d}T00:00:00",
+            },
+        )
 
     resp = await client.get("/api/trades")
     assert resp.status_code == 200
@@ -115,16 +118,33 @@ async def test_list_trades_200(client):
 async def test_list_trades_filter_by_status(client):
     """``GET /api/trades?status=closed`` filters correctly."""
     # Open trade
-    await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     # Closed trade
-    await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "closed",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-        "exit_price": 110.0, "exit_datetime": "2026-01-02T00:00:00",
-    })
+    await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "closed",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+            "exit_price": 110.0,
+            "exit_datetime": "2026-01-02T00:00:00",
+        },
+    )
 
     resp = await client.get("/api/trades?status=closed")
     assert resp.status_code == 200
@@ -135,10 +155,18 @@ async def test_list_trades_filter_by_status(client):
 @pytest.mark.asyncio
 async def test_get_trade_by_id_200(client):
     """``GET /api/trades/{id}`` returns the trade."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     resp = await client.get(f"/api/trades/{trade_id}")
@@ -156,10 +184,18 @@ async def test_get_trade_not_found_404(client):
 @pytest.mark.asyncio
 async def test_update_trade_200(client):
     """``PATCH /api/trades/{id}`` updates fields within editable window."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     resp = await client.patch(
@@ -174,10 +210,18 @@ async def test_update_trade_200(client):
 async def test_update_trade_past_editable_422(client):
     """``PATCH /api/trades/{id}`` past editable window returns 422."""
     # Create a trade then set editable_until directly to simulate expired window
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     # Update editable_until to past via patch (open trade has None, so we can
@@ -212,10 +256,18 @@ async def test_update_trade_past_editable_422(client):
 @pytest.mark.asyncio
 async def test_delete_trade_204(client):
     """``DELETE /api/trades/{id}`` returns 204 and soft-deletes."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     resp = await client.delete(f"/api/trades/{trade_id}")
@@ -230,10 +282,18 @@ async def test_delete_trade_204(client):
 @pytest.mark.asyncio
 async def test_close_trade_200(client):
     """``POST /api/trades/{id}/close`` returns 200 with closed trade."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "open",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "open",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     resp = await client.post(
@@ -250,11 +310,20 @@ async def test_close_trade_200(client):
 @pytest.mark.asyncio
 async def test_close_already_closed_422(client):
     """``POST /api/trades/{id}/close`` on closed trade returns 422."""
-    create_resp = await client.post("/api/trades", json={
-        "account_id": 1, "asset_id": 1, "direction": "long", "status": "closed",
-        "entry_price": 100.0, "quantity": 1.0, "entry_datetime": "2026-01-01T00:00:00",
-        "exit_price": 110.0, "exit_datetime": "2026-01-02T00:00:00",
-    })
+    create_resp = await client.post(
+        "/api/trades",
+        json={
+            "account_id": 1,
+            "asset_id": 1,
+            "direction": "long",
+            "status": "closed",
+            "entry_price": 100.0,
+            "quantity": 1.0,
+            "entry_datetime": "2026-01-01T00:00:00",
+            "exit_price": 110.0,
+            "exit_datetime": "2026-01-02T00:00:00",
+        },
+    )
     trade_id = create_resp.json()["id"]
 
     resp = await client.post(

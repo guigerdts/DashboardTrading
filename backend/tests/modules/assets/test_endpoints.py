@@ -84,10 +84,13 @@ async def test_list_assets_200(client, market):
     """``GET /api/assets`` returns paginated response."""
     # Create two assets
     for symbol in ("EURUSD", "GBPUSD"):
-        await client.post("/api/assets", json={
-            "symbol": symbol,
-            "market_id": market.id,
-        })
+        await client.post(
+            "/api/assets",
+            json={
+                "symbol": symbol,
+                "market_id": market.id,
+            },
+        )
 
     resp = await client.get("/api/assets")
     assert resp.status_code == 200
@@ -122,10 +125,13 @@ async def test_list_assets_with_symbol_filter(client, market):
 @pytest.mark.asyncio
 async def test_get_asset_by_id_200(client, market):
     """``GET /api/assets/{id}`` returns the asset."""
-    create_resp = await client.post("/api/assets", json={
-        "symbol": "USDJPY",
-        "market_id": market.id,
-    })
+    create_resp = await client.post(
+        "/api/assets",
+        json={
+            "symbol": "USDJPY",
+            "market_id": market.id,
+        },
+    )
     asset_id = create_resp.json()["id"]
 
     resp = await client.get(f"/api/assets/{asset_id}")
@@ -149,10 +155,13 @@ async def test_get_asset_not_found_404(client):
 @pytest.mark.asyncio
 async def test_update_asset_200(client, market):
     """``PATCH /api/assets/{id}`` updates fields."""
-    create_resp = await client.post("/api/assets", json={
-        "symbol": "AUDUSD",
-        "market_id": market.id,
-    })
+    create_resp = await client.post(
+        "/api/assets",
+        json={
+            "symbol": "AUDUSD",
+            "market_id": market.id,
+        },
+    )
     asset_id = create_resp.json()["id"]
 
     resp = await client.patch(
@@ -172,10 +181,13 @@ async def test_update_asset_200(client, market):
 @pytest.mark.asyncio
 async def test_delete_asset_204(client, market):
     """``DELETE /api/assets/{id}`` returns 204 and soft-deletes."""
-    create_resp = await client.post("/api/assets", json={
-        "symbol": "NZDUSD",
-        "market_id": market.id,
-    })
+    create_resp = await client.post(
+        "/api/assets",
+        json={
+            "symbol": "NZDUSD",
+            "market_id": market.id,
+        },
+    )
     asset_id = create_resp.json()["id"]
 
     resp = await client.delete(f"/api/assets/{asset_id}")

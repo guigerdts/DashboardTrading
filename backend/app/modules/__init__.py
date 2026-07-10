@@ -53,15 +53,11 @@ def discover_modules() -> list[APIRouter]:
         try:
             mod = importlib.import_module(module_path)
         except Exception:
-            logger.exception(
-                "Failed to import module %r — skipping", module_path
-            )
+            logger.exception("Failed to import module %r — skipping", module_path)
             continue
 
         if not hasattr(mod, "router"):
-            logger.warning(
-                "Module %r has no 'router' attribute — skipping", module_path
-            )
+            logger.warning("Module %r has no 'router' attribute — skipping", module_path)
             continue
 
         routers.append(mod.router)

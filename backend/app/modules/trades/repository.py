@@ -250,9 +250,7 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         Caller must validate all tag IDs exist and are active before calling.
         """
         # Delete existing
-        await self._session.execute(
-            delete(TradeTag).where(TradeTag.trade_id == trade_id)
-        )
+        await self._session.execute(delete(TradeTag).where(TradeTag.trade_id == trade_id))
         # Insert new (deduplicated)
         unique_ids = sorted(set(tag_ids))
         if unique_ids:
@@ -261,9 +259,7 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
                 [{"trade_id": trade_id, "tag_id": tid} for tid in unique_ids],
             )
 
-    async def sync_mistakes(
-        self, trade_id: int, mistakes: list[dict]
-    ) -> None:
+    async def sync_mistakes(self, trade_id: int, mistakes: list[dict]) -> None:
         """Replace all mistake associations for a trade.
 
         Each entry in ``mistakes`` is a dict with ``id`` (int, required)
@@ -276,9 +272,7 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         Caller must validate all mistake IDs exist and are active before calling.
         """
         # Delete existing
-        await self._session.execute(
-            delete(MistakeEntry).where(MistakeEntry.trade_id == trade_id)
-        )
+        await self._session.execute(delete(MistakeEntry).where(MistakeEntry.trade_id == trade_id))
         # Insert new
         if mistakes:
             await self._session.execute(

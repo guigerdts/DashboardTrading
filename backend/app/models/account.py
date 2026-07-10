@@ -3,7 +3,6 @@
 Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
 
-
 import sqlalchemy as sa
 from sqlalchemy import Text
 from sqlalchemy.orm import Mapped, mapped_column
@@ -24,19 +23,19 @@ class Account(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(
-        Text, nullable=False, unique=True  # BR-26
+        Text,
+        nullable=False,
+        unique=True,  # BR-26
     )
     broker: Mapped[str | None] = mapped_column(Text, nullable=True)
     account_type: Mapped[str | None] = mapped_column(Text, nullable=True)
-    base_currency: Mapped[str] = mapped_column(
-        Text, nullable=False, default="USD"
-    )
+    base_currency: Mapped[str] = mapped_column(Text, nullable=False, default="USD")
     status: Mapped[str] = mapped_column(
-        Text, nullable=False, default="active"  # BR-27
+        Text,
+        nullable=False,
+        default="active",  # BR-27
     )
 
     __table_args__ = (
-        sa.CheckConstraint(
-            "status IN ('active', 'inactive')", name="ck_accounts_status"
-        ),
+        sa.CheckConstraint("status IN ('active', 'inactive')", name="ck_accounts_status"),
     )

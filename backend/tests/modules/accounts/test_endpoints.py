@@ -44,9 +44,12 @@ async def test_list_accounts_200(client):
     """``GET /api/accounts`` returns paginated response."""
     # Create two accounts
     for i in range(2):
-        await client.post("/api/accounts", json={
-            "name": f"list_test_acc_{i}",
-        })
+        await client.post(
+            "/api/accounts",
+            json={
+                "name": f"list_test_acc_{i}",
+            },
+        )
 
     resp = await client.get("/api/accounts")
     assert resp.status_code == 200
@@ -62,9 +65,12 @@ async def test_list_accounts_200(client):
 @pytest.mark.asyncio
 async def test_get_account_by_id_200(client):
     """``GET /api/accounts/{id}`` returns the account."""
-    create_resp = await client.post("/api/accounts", json={
-        "name": "get_by_id_test",
-    })
+    create_resp = await client.post(
+        "/api/accounts",
+        json={
+            "name": "get_by_id_test",
+        },
+    )
     account_id = create_resp.json()["id"]
 
     resp = await client.get(f"/api/accounts/{account_id}")
@@ -83,9 +89,12 @@ async def test_get_account_not_found_404(client):
 @pytest.mark.asyncio
 async def test_update_account_200(client):
     """``PATCH /api/accounts/{id}`` updates fields."""
-    create_resp = await client.post("/api/accounts", json={
-        "name": "update_test_acc",
-    })
+    create_resp = await client.post(
+        "/api/accounts",
+        json={
+            "name": "update_test_acc",
+        },
+    )
     account_id = create_resp.json()["id"]
 
     resp = await client.patch(
@@ -116,9 +125,12 @@ async def test_update_account_duplicate_name_409(client):
 @pytest.mark.asyncio
 async def test_delete_account_204(client):
     """``DELETE /api/accounts/{id}`` returns 204 and soft-deletes."""
-    create_resp = await client.post("/api/accounts", json={
-        "name": "delete_test_acc",
-    })
+    create_resp = await client.post(
+        "/api/accounts",
+        json={
+            "name": "delete_test_acc",
+        },
+    )
     account_id = create_resp.json()["id"]
 
     resp = await client.delete(f"/api/accounts/{account_id}")

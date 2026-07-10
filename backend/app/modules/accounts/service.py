@@ -32,9 +32,7 @@ class AccountService:
         """
         existing = await self.uow.accounts.get_by_name(dto.name)
         if existing:
-            raise ConflictError(
-                f"Account with name '{dto.name}' already exists"
-            )
+            raise ConflictError(f"Account with name '{dto.name}' already exists")
 
         account = Account(
             name=dto.name,
@@ -82,9 +80,7 @@ class AccountService:
         if "name" in update_data and update_data["name"] != account.name:
             existing = await self.uow.accounts.get_by_name(update_data["name"])
             if existing and existing.id != id:
-                raise ConflictError(
-                    f"Account with name '{update_data['name']}' already exists"
-                )
+                raise ConflictError(f"Account with name '{update_data['name']}' already exists")
 
         for field, value in update_data.items():
             setattr(account, field, value)

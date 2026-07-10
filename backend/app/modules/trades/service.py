@@ -17,7 +17,6 @@ from app.core.exceptions import BusinessRuleError, NotFoundError
 from app.db.unit_of_work import UnitOfWork
 from app.models.trade import Trade
 from app.modules.trades.schemas import (
-    MistakeSyncItem,
     ReviewUpdate,
     TradeClose,
     TradeCreate,
@@ -176,18 +175,18 @@ class TradeService:
 
         # Validate strategy/setup references if changed
         if "strategy_id" in update_data and update_data["strategy_id"] is not None:
-            from app.modules.catalogs.service import CatalogService
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.strategy import Strategy
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.modules.catalogs.service import CatalogService
 
             strat_svc = CatalogService(CatalogRepository(self.uow._session, Strategy))
             await strat_svc.get(update_data["strategy_id"])
             await strat_svc.validate_active_ids([update_data["strategy_id"]])
 
         if "setup_id" in update_data and update_data["setup_id"] is not None:
-            from app.modules.catalogs.service import CatalogService
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.strategy import Setup
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.modules.catalogs.service import CatalogService
 
             setup_svc = CatalogService(CatalogRepository(self.uow._session, Setup))
             await setup_svc.get(update_data["setup_id"])
@@ -263,10 +262,7 @@ class TradeService:
                 pass
 
         # Build tags list (from selectinload eager join)
-        tags_data = [
-            {"id": t.id, "name": t.name}
-            for t in getattr(trade, "tags", []) or []
-        ]
+        tags_data = [{"id": t.id, "name": t.name} for t in getattr(trade, "tags", []) or []]
 
         # Build mistakes list with notes (from selectinload eager join)
         mistakes_data = [
@@ -351,9 +347,9 @@ class TradeService:
 
         # Validate all tag IDs exist and are active
         if tag_ids:
-            from app.modules.catalogs.service import CatalogService
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.tag import Tag
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.modules.catalogs.service import CatalogService
 
             cat_svc = CatalogService(CatalogRepository(self.uow._session, Tag))
             await cat_svc.validate_active_ids(tag_ids)
@@ -381,9 +377,9 @@ class TradeService:
 
         # Validate all mistake IDs exist and are active
         if mistake_ids:
-            from app.modules.catalogs.service import CatalogService
-            from app.modules.catalogs.repository import CatalogRepository
             from app.models.mistake import Mistake
+            from app.modules.catalogs.repository import CatalogRepository
+            from app.modules.catalogs.service import CatalogService
 
             cat_svc = CatalogService(CatalogRepository(self.uow._session, Mistake))
             await cat_svc.validate_active_ids(mistake_ids)
@@ -392,7 +388,9 @@ class TradeService:
         self.logger.info("Synced mistakes for trade id=%s", id)
         return await self.get(id)
 
-    async def update_context(self, id: int, strategy_id: int | None = None, setup_id: int | None = None) -> Trade:
+    async def update_context(
+        self, id: int, strategy_id: int | None = None, setup_id: int | None = None
+    ) -> Trade:
         """Update a trade's strategy and/or setup references.
 
         Validates:
@@ -405,9 +403,9 @@ class TradeService:
         trade = await self.get(id)
         self._validate_editable(trade)
 
-        from app.modules.catalogs.service import CatalogService
+        from app.models.strategy import Setup, Strategy
         from app.modules.catalogs.repository import CatalogRepository
-        from app.models.strategy import Strategy, Setup
+        from app.modules.catalogs.service import CatalogService
 
         if strategy_id is not None:
             strat_svc = CatalogService(CatalogRepository(self.uow._session, Strategy))
