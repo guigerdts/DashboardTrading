@@ -15,6 +15,10 @@ import Settings from './pages/Settings';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const ImportPage = lazy(() => import('./modules/imports/mt5/pages/ImportPage'));
+const StrategiesAdmin = lazy(() => import('./modules/catalogs/strategies/StrategiesPage'));
+const SetupsAdmin = lazy(() => import('./modules/catalogs/setups/SetupsPage'));
+const TagsAdmin = lazy(() => import('./modules/catalogs/tags/TagsPage'));
+const MistakesAdmin = lazy(() => import('./modules/catalogs/mistakes/MistakesPage'));
 
 function App() {
   return (
@@ -33,6 +37,10 @@ function App() {
         <Route path="/screenshot-library" element={<ScreenshotLibrary />} />
         <Route path="/error-management" element={<ErrorManagement />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/strategies" element={<StrategiesAdmin />} />
+        <Route path="/settings/setups" element={<SetupsAdmin />} />
+        <Route path="/settings/tags" element={<TagsAdmin />} />
+        <Route path="/settings/mistakes" element={<MistakesAdmin />} />
       </Routes>
     </Suspense>
   );
