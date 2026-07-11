@@ -10,13 +10,16 @@ from app.modules.analytics.schemas import (
     AssetBreakdownResponse,
     BreakdownResponse,
     ComparePeriodsResponse,
+    CorrelationMatrix,
     DirectionBreakdownResponse,
     EquityResponse,
+    ExposureResponse,
     HeatmapResponse,
     MarketBreakdownResponse,
     PerformanceByPeriodResponse,
     PerformanceResponse,
     RDistributionResponse,
+    RiskMetricsResponse,
     RollingResponse,
     SummaryResponse,
 )
@@ -119,6 +122,56 @@ async def get_heatmap(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     return await service.get_heatmap(filters)
+
+
+# =========================================================================
+# Risk analytics
+# =========================================================================
+
+
+@router.get("/risk-metrics", response_model=RiskMetricsResponse)
+async def get_risk_metrics(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Comprehensive risk metrics including drawdown, Sharpe, Kelly, etc."""
+    return await service.get_risk_metrics(filters)
+
+
+@router.get("/exposure/by-asset", response_model=list[ExposureResponse])
+async def get_exposure_by_asset(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Notional exposure grouped by asset."""
+    return await service.get_exposure_by_asset(filters)
+
+
+@router.get("/exposure/by-session", response_model=list[ExposureResponse])
+async def get_exposure_by_session(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Trade count exposure grouped by market session."""
+    return await service.get_exposure_by_session(filters)
+
+
+@router.get("/exposure/by-strategy", response_model=list[ExposureResponse])
+async def get_exposure_by_strategy(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Risk exposure grouped by strategy."""
+    return await service.get_exposure_by_strategy(filters)
+
+
+@router.get("/correlation", response_model=CorrelationMatrix)
+async def get_correlation(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Compute symmetric N×N Pearson correlation matrix across assets."""
+    return await service.get_correlation(filters)
 
 
 # =========================================================================

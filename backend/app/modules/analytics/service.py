@@ -13,10 +13,25 @@ from app.modules.analytics.calculators.context_breakdown import (
     breakdown_by_strategy,
     breakdown_by_tag,
 )
+from app.modules.analytics.calculators.correlation import compute_correlation
 from app.modules.analytics.calculators.distribution import compute_r_distribution
+from app.modules.analytics.calculators.exposure import (
+    compute_exposure_by_asset,
+    compute_exposure_by_session,
+    compute_exposure_by_strategy,
+)
 from app.modules.analytics.calculators.heatmap import compute_heatmap
 from app.modules.analytics.calculators.performance import compute_performance
-from app.modules.analytics.calculators.risk import compute_risk
+from app.modules.analytics.calculators.pnl import compute_pnl
+from app.modules.analytics.calculators.risk import (
+    _avg_holding_time,
+    _calmar_ratio,
+    _kelly_fraction,
+    _risk_of_ruin,
+    _sharpe_ratio,
+    _sortino_ratio,
+    compute_risk,
+)
 from app.modules.analytics.calculators.rolling import compute_rolling_metrics
 from app.modules.analytics.calculators.timeseries import (
     compute_equity_curve,
@@ -31,9 +46,11 @@ from app.modules.analytics.schemas import (
     BreakdownItem,
     BreakdownResponse,
     ComparePeriodsResponse,
+    CorrelationMatrix,
     DirectionBreakdownResponse,
     EquityPoint,
     EquityResponse,
+    ExposureResponse,
     HeatmapItem,
     HeatmapResponse,
     MarketBreakdown,
@@ -46,6 +63,7 @@ from app.modules.analytics.schemas import (
     RDistributionItem,
     RDistributionResponse,
     RiskMetrics,
+    RiskMetricsResponse,
     RollingPoint,
     RollingResponse,
     StreakInfo,
@@ -187,6 +205,132 @@ class AnalyticsService:
         return HeatmapResponse(
             total_trades=len(trades),
             cells=[HeatmapItem(**c) for c in cells],
+        )
+
+    # =====================================================================
+    # Risk analytics
+    # =====================================================================
+
+    async def get_risk_metrics(self, filters: AnalyticsFilter) -> RiskMetricsResponse:
+        """Compute comprehensive risk metrics for a filtered set of trades.
+
+        Delegates to existing ``compute_risk`` / ``compute_performance``
+        calculators and private helpers from ``risk.py``.
+        """
+        trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        if not trades:
+            return RiskMetricsResponse(
+                max_drawdown=0.0,
+                drawdown_pct=0.0,
+                recovery_factor=None,
+                payoff_ratio=None,
+                profit_factor=None,
+                risk_of_ruin=0.0,
+                sharpe_ratio=None,
+                sortino_ratio=None,
+                calmar_ratio=None,
+                avg_holding_time_days=0.0,
+                kelly_fraction=0.0,
+            )
+
+        risk = compute_risk(trades)
+        perf = compute_performance(trades)
+        pnls = [compute_pnl(t) for t in trades]
+
+        return RiskMetricsResponse(
+            max_drawdown=risk["max_drawdown"],
+            drawdown_pct=risk["max_drawdown_pct"],
+            recovery_factor=risk["recovery_factor"],
+            payoff_ratio=risk["payoff_ratio"],
+            profit_factor=perf["profit_factor"],
+            risk_of_ruin=_risk_of_ruin(trades),
+            sharpe_ratio=_sharpe_ratio(pnls),
+            sortino_ratio=_sortino_ratio(pnls),
+            calmar_ratio=_calmar_ratio(pnls, risk["max_drawdown"]),
+            avg_holding_time_days=_avg_holding_time(trades),
+            kelly_fraction=_kelly_fraction(trades),
+        )
+
+    async def get_exposure_by_asset(self, filters: AnalyticsFilter) -> list[ExposureResponse]:
+        """Group closed trades by asset, return relative notional exposure."""
+        trades = await self.uow.trades.list_closed(
+            **filters.to_filter_kwargs(), load_relations=["asset"]
+        )
+        groups = compute_exposure_by_asset(trades)
+        total_notional = sum(g["notional"] for g in groups) or 1.0
+        return [
+            ExposureResponse(
+                asset=g["asset_name"] or str(g["asset_id"]),
+                exposure_pct=round(g["notional"] / total_notional * 100, 2),
+                trade_count=g["trade_count"],
+            )
+            for g in groups
+        ]
+
+    async def get_exposure_by_session(self, filters: AnalyticsFilter) -> list[ExposureResponse]:
+        """Group closed trades by market session, return relative trade count."""
+        trades = await self.uow.trades.list_closed(
+            **filters.to_filter_kwargs(), load_relations=["asset"]
+        )
+        groups = compute_exposure_by_session(trades)
+        total_trades = len(trades) or 1
+        return [
+            ExposureResponse(
+                asset=g["name"] or "unknown",
+                exposure_pct=round(g["trade_count"] / total_trades * 100, 2),
+                trade_count=g["trade_count"],
+            )
+            for g in groups
+        ]
+
+    async def get_exposure_by_strategy(self, filters: AnalyticsFilter) -> list[ExposureResponse]:
+        """Group closed trades by strategy, return relative risk exposure."""
+        trades = await self.uow.trades.list_closed(
+            **filters.to_filter_kwargs(), load_relations=["strategy"]
+        )
+        groups = compute_exposure_by_strategy(trades)
+        total_risk = sum(g["total_risk_amount"] for g in groups) or 1.0
+        return [
+            ExposureResponse(
+                asset=g["name"] or "unknown",
+                exposure_pct=round(g["total_risk_amount"] / total_risk * 100, 2),
+                trade_count=g["trade_count"],
+            )
+            for g in groups
+        ]
+
+    async def get_correlation(self, filters: AnalyticsFilter) -> CorrelationMatrix:
+        """Compute symmetric N×N Pearson correlation matrix across assets."""
+        trades = await self.uow.trades.list_closed(
+            **filters.to_filter_kwargs(), load_relations=["asset"]
+        )
+        pairs = compute_correlation(trades)
+
+        # Collect unique asset names
+        asset_names: set[str] = set()
+        for p in pairs:
+            asset_names.add(p.get("asset_a_name") or str(p["asset_a_id"]))
+            asset_names.add(p.get("asset_b_name") or str(p["asset_b_id"]))
+        sorted_assets = sorted(asset_names)
+
+        # Build symmetric N×N matrix
+        n = len(sorted_assets)
+        matrix = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
+        lookup = {name: i for i, name in enumerate(sorted_assets)}
+
+        for p in pairs:
+            a_name = p.get("asset_a_name") or str(p["asset_a_id"])
+            b_name = p.get("asset_b_name") or str(p["asset_b_id"])
+            corr = p["correlation"]
+            if corr is not None and a_name in lookup and b_name in lookup:
+                i, j = lookup[a_name], lookup[b_name]
+                matrix[i][j] = corr
+                matrix[j][i] = corr
+
+        return CorrelationMatrix(
+            assets=sorted_assets,
+            matrix=matrix,
+            method="pearson",
         )
 
     # =====================================================================
