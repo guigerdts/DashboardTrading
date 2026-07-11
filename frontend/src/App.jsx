@@ -19,6 +19,8 @@ const StrategiesAdmin = lazy(() => import('./modules/catalogs/strategies/Strateg
 const SetupsAdmin = lazy(() => import('./modules/catalogs/setups/SetupsPage'));
 const TagsAdmin = lazy(() => import('./modules/catalogs/tags/TagsPage'));
 const MistakesAdmin = lazy(() => import('./modules/catalogs/mistakes/MistakesPage'));
+const EdgeDiscoveryPage = lazy(() => import('./modules/edge-discovery/pages/EdgeDiscoveryPage'));
+const EdgeDetailPage = lazy(() => import('./modules/edge-discovery/pages/EdgeDetailPage'));
 
 function App() {
   return (
@@ -41,6 +43,8 @@ function App() {
         <Route path="/settings/setups" element={<SetupsAdmin />} />
         <Route path="/settings/tags" element={<TagsAdmin />} />
         <Route path="/settings/mistakes" element={<MistakesAdmin />} />
+        <Route path="/analytics/edges" element={<EdgeDiscoveryPage />} />
+        <Route path="/analytics/edges/:group_id" element={<EdgeDetailPage />} />
       </Routes>
     </Suspense>
   );
