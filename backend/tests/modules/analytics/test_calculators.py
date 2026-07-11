@@ -12,6 +12,14 @@ from app.modules.analytics.calculators.breakdown import (
     breakdown_by_direction,
     breakdown_by_market,
 )
+from app.modules.analytics.calculators.context_breakdown import (
+    breakdown_by_mistake,
+    breakdown_by_setup,
+    breakdown_by_strategy,
+    breakdown_by_tag,
+)
+from app.modules.analytics.calculators.distribution import compute_r_distribution
+from app.modules.analytics.calculators.heatmap import compute_heatmap
 from app.modules.analytics.calculators.performance import compute_performance
 from app.modules.analytics.calculators.pnl import compute_pnl
 from app.modules.analytics.calculators.risk import compute_risk
@@ -252,6 +260,367 @@ class TestBreakdownByMarket:
         trade = _make_trade(asset=None)
         result = breakdown_by_market([trade])
         assert len(result) == 0
+
+
+# =========================================================================
+# Context breakdown calculators (strategy, setup, tags, mistakes)
+# =========================================================================
+
+
+class TestBreakdownByStrategy:
+    """Group trades by strategy_id, handle null, sort correctly."""
+
+    def test_single_strategy(self):
+        """Trades for one strategy produce one breakdown row."""
+        strategies = {1: "Trend Following"}
+        trades = [
+            _make_trade(strategy_id=1, exit_price=110.0, entry_price=100.0),
+            _make_trade(strategy_id=1, exit_price=90.0, entry_price=100.0),
+        ]
+        result = breakdown_by_strategy(trades, strategies)
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+        assert result[0]["name"] == "Trend Following"
+        assert result[0]["trade_count"] == 2
+
+    def test_multi_strategy(self):
+        """Trades for two strategies produce two rows sorted by net_pnl DESC."""
+        strategies = {1: "Trend Following", 2: "Mean Reversion"}
+        trades = [
+            _make_trade(strategy_id=1, exit_price=110.0, entry_price=100.0),  # +10
+            _make_trade(strategy_id=2, exit_price=120.0, entry_price=100.0),  # +20
+        ]
+        result = breakdown_by_strategy(trades, strategies)
+        assert len(result) == 2
+        # Mean Reversion has higher net_pnl → should be first
+        assert result[0]["id"] == 2
+        assert result[1]["id"] == 1
+
+    def test_null_strategy_id(self):
+        """Trades with null strategy_id are grouped as 'No Strategy'."""
+        strategies = {1: "Trend Following"}
+        trades = [
+            _make_trade(strategy_id=None, exit_price=110.0, entry_price=100.0),
+        ]
+        result = breakdown_by_strategy(trades, strategies)
+        assert len(result) == 1
+        assert result[0]["id"] == 0
+        assert result[0]["name"] == "No Strategy"
+
+    def test_sort_order(self):
+        """Sort by net_pnl DESC → trade_count DESC → name ASC."""
+        strategies = {1: "Alpha", 2: "Beta", 3: "Gamma"}
+        trades = [
+            _make_trade(strategy_id=1, exit_price=110.0, entry_price=100.0),  # +10, 1 trade
+            _make_trade(strategy_id=2, exit_price=110.0, entry_price=100.0),  # +10, 1 trade
+            _make_trade(strategy_id=3, exit_price=120.0, entry_price=100.0),  # +20, 1 trade
+        ]
+        result = breakdown_by_strategy(trades, strategies)
+        # Gamma (+20) → Alpha (+10) → Beta (+10, Alpha vs Beta: Alpha < Beta)
+        assert result[0]["id"] == 3  # Gamma, +20
+        assert result[1]["id"] == 1  # Alpha, +10 (Alpha < Beta)
+        assert result[2]["id"] == 2  # Beta, +10
+
+
+class TestBreakdownBySetup:
+    """Group trades by setup_id, same pattern as strategy."""
+
+    def test_single_setup(self):
+        """Trades for one setup produce one row."""
+        setups = {1: "Pin Bar"}
+        trades = [
+            _make_trade(setup_id=1, exit_price=110.0, entry_price=100.0),
+        ]
+        result = breakdown_by_setup(trades, setups)
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+        assert result[0]["name"] == "Pin Bar"
+
+    def test_null_setup_id(self):
+        """Null setup_id → 'No Setup'."""
+        trades = [_make_trade(setup_id=None)]
+        result = breakdown_by_setup(trades, {})
+        assert result[0]["name"] == "No Setup"
+
+
+class TestBreakdownByTag:
+    """Flatten M:N trade_tags pivot — each tag gets its own slice."""
+
+    def test_single_tag(self):
+        """A trade with one tag produces one row."""
+        tag = MagicMock(id=1, name="Momentum")
+        trades = [
+            _make_trade(tags=[tag], exit_price=110.0, entry_price=100.0),
+        ]
+        result = breakdown_by_tag(trades, {1: "Momentum"})
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+        assert result[0]["name"] == "Momentum"
+        assert result[0]["trade_count"] == 1
+
+    def test_multiple_tags_on_one_trade(self):
+        """A trade with 2 tags contributes to both tag slices."""
+        tag1 = MagicMock(id=1, name="Momentum")
+        tag2 = MagicMock(id=2, name="Breakout")
+        trades = [
+            _make_trade(tags=[tag1, tag2], exit_price=110.0, entry_price=100.0),  # +10
+        ]
+        result = breakdown_by_tag(trades, {1: "Momentum", 2: "Breakout"})
+        assert len(result) == 2
+        for item in result:
+            assert item["trade_count"] == 1
+            assert item["net_pnl"] == 10.0
+
+    def test_no_tags(self):
+        """A trade with no tags produces no rows."""
+        trades = [_make_trade(tags=[])]
+        result = breakdown_by_tag(trades, {})
+        assert len(result) == 0
+
+
+class TestBreakdownByMistake:
+    """Flatten 1:N mistake_entries — each mistake gets its own slice."""
+
+    def test_single_mistake(self):
+        """A trade with one mistake entry produces one row."""
+        entry = MagicMock(mistake_id=1)
+        trades = [
+            _make_trade(mistakes=[entry], exit_price=110.0, entry_price=100.0),
+        ]
+        result = breakdown_by_mistake(trades, {1: "Overtrading"})
+        assert len(result) == 1
+        assert result[0]["id"] == 1
+        assert result[0]["name"] == "Overtrading"
+        assert result[0]["trade_count"] == 1
+
+    def test_multiple_mistakes_on_one_trade(self):
+        """A trade with 2 mistakes contributes to both slices."""
+        entry1 = MagicMock(mistake_id=1)
+        entry2 = MagicMock(mistake_id=2)
+        trades = [
+            _make_trade(mistakes=[entry1, entry2], exit_price=110.0, entry_price=100.0),
+        ]
+        result = breakdown_by_mistake(trades, {1: "Overtrading", 2: "FOMO"})
+        assert len(result) == 2
+        for item in result:
+            assert item["trade_count"] == 1
+
+    def test_no_mistakes(self):
+        """A trade with no mistakes produces no rows."""
+        trades = [_make_trade(mistakes=[])]
+        result = breakdown_by_mistake(trades, {})
+        assert len(result) == 0
+
+
+class TestBreakdownSortOrder:
+    """Verify sort order across all context breakdowns."""
+
+    def test_sort_by_net_pnl_then_trade_count_then_name(self):
+        """Sort: net_pnl DESC → trade_count DESC → name ASC."""
+        strategies = {1: "Alpha", 2: "Bravo", 3: "Charlie", 4: "Delta"}
+        trades = [
+            _make_trade(
+                strategy_id=1, exit_price=130.0, entry_price=100.0, asset=_make_asset()
+            ),  # +30
+            _make_trade(
+                strategy_id=2, exit_price=110.0, entry_price=100.0, asset=_make_asset()
+            ),  # +10
+            _make_trade(
+                strategy_id=2, exit_price=110.0, entry_price=100.0, asset=_make_asset()
+            ),  # +10 (2 trades)
+            _make_trade(
+                strategy_id=3, exit_price=110.0, entry_price=100.0, asset=_make_asset()
+            ),  # +10
+            _make_trade(
+                strategy_id=4, exit_price=105.0, entry_price=100.0, asset=_make_asset()
+            ),  # +5
+        ]
+        result = breakdown_by_strategy(trades, strategies)
+        # Alpha (+30, 1 trade): first
+        # Bravo (+20, 2 trades): second
+        # Charlie (+10, 1 trade): third
+        # Delta (+5, 1 trade): last
+        assert result[0]["id"] == 1  # Alpha +30
+        assert result[1]["id"] == 2  # Bravo +10, 2 trades
+        assert result[2]["id"] == 3  # Charlie +10, 1 trade
+        assert result[3]["id"] == 4  # Delta +5
+
+
+# =========================================================================
+# R Distribution calculator
+# =========================================================================
+
+
+class TestComputeRDistribution:
+    """R-multiple bucketing for trades with risk_amount."""
+
+    def test_empty_trades(self):
+        """Empty trade list returns empty buckets."""
+        result = compute_r_distribution([])
+        assert result == []
+
+    def test_no_risk_amount(self):
+        """Trades without risk_amount are skipped."""
+        trades = [_make_trade(risk_amount=None)]
+        result = compute_r_distribution(trades)
+        assert result == []
+
+    def test_single_bucket(self):
+        """Trades with R in same bucket."""
+        trades = [
+            _make_trade(
+                risk_amount=100.0, exit_price=110.0, entry_price=100.0
+            ),  # +10, R=0.1 → 0 to 1
+        ]
+        result = compute_r_distribution(trades)
+        assert any(b["bucket"] == "0 to 1" and b["count"] == 1 for b in result)
+
+    def test_multi_bucket(self):
+        """Trades in different buckets are counted correctly."""
+        trades = [
+            _make_trade(risk_amount=100.0, exit_price=300.0, entry_price=100.0),  # +200, R=2.0 → 2+
+            _make_trade(
+                risk_amount=100.0, exit_price=50.0, entry_price=100.0
+            ),  # -50, R=-0.5 → -1 to 0
+            _make_trade(
+                risk_amount=100.0, exit_price=120.0, entry_price=100.0
+            ),  # +20, R=0.2 → 0 to 1
+            _make_trade(
+                risk_amount=100.0, exit_price=10.0, entry_price=100.0
+            ),  # -90, R=-0.9 → -1 to 0
+        ]
+        result = compute_r_distribution(trades)
+        bucket_map = {b["bucket"]: b["count"] for b in result}
+        assert bucket_map.get("2+") == 1
+        assert bucket_map.get("0 to 1") == 1
+        assert bucket_map.get("-1 to 0") == 2
+
+    def test_all_buckets(self):
+        """One trade in each bucket covers all 6 ranges."""
+        trades = [
+            _make_trade(
+                risk_amount=100.0, exit_price=1.0, entry_price=100.0, quantity=10.0
+            ),  # -990, R=-9.9 → < -2
+            _make_trade(
+                risk_amount=100.0, exit_price=200.0, entry_price=100.0
+            ),  # +100, R=1.0 → 1 to 2
+            _make_trade(
+                risk_amount=100.0, exit_price=50.0, entry_price=100.0
+            ),  # -50, R=-0.5 → -1 to 0
+            _make_trade(
+                risk_amount=100.0, exit_price=250.0, entry_price=100.0
+            ),  # +150, R=1.5 → 1 to 2
+            _make_trade(risk_amount=100.0, exit_price=10.0, entry_price=100.0),  # -90, R=-0.9
+            _make_trade(risk_amount=100.0, exit_price=400.0, entry_price=100.0),  # +300, R=3.0 → 2+
+            _make_trade(
+                risk_amount=100.0, exit_price=150.0, entry_price=100.0
+            ),  # +50, R=0.5 → 0 to 1
+        ]
+        result = compute_r_distribution(trades)
+        bucket_names = {b["bucket"] for b in result}
+        assert "< -2" in bucket_names
+        assert "-2 to -1" not in bucket_names  # no such values
+        assert "-1 to 0" in bucket_names
+        assert "0 to 1" in bucket_names
+        assert "1 to 2" in bucket_names
+        assert "2+" in bucket_names
+
+
+# =========================================================================
+# Heatmap calculator
+# =========================================================================
+
+
+class TestComputeHeatmap:
+    """Day×hour heatmap aggregation."""
+
+    def test_empty(self):
+        """Empty trade list returns empty cells."""
+        result = compute_heatmap([])
+        assert result == []
+
+    def test_single_cell(self):
+        """A single trade produces one cell."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 5, tzinfo=UTC),  # Monday=0
+            ),
+        ]
+        # January 5, 2026 is a Monday
+        result = compute_heatmap(trades)
+        assert len(result) == 1
+        assert result[0]["day"] == 0  # Monday
+        assert result[0]["hour"] == 0  # midnight
+        assert result[0]["trade_count"] == 1
+        assert result[0]["net_pnl"] == 10.0
+
+    def test_multi_cell(self):
+        """Trades on different days/hours produce separate cells."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 5, 9, 0, tzinfo=UTC),  # Mon 9am
+            ),
+            _make_trade(
+                exit_price=120.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 5, 14, 0, tzinfo=UTC),  # Mon 2pm
+            ),
+            _make_trade(
+                exit_price=90.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 6, 9, 0, tzinfo=UTC),  # Tue 9am
+            ),
+        ]
+        result = compute_heatmap(trades)
+        assert len(result) == 3
+        # Verify aggregation
+        cells = {(c["day"], c["hour"]): c for c in result}
+        assert (0, 9) in cells
+        assert cells[(0, 9)]["trade_count"] == 1
+        assert cells[(0, 9)]["net_pnl"] == 10.0
+
+    def test_aggregation_same_cell(self):
+        """Two trades in the same cell aggregate count and PnL."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 5, 9, 0, tzinfo=UTC),  # Mon 9am +10
+            ),
+            _make_trade(
+                exit_price=90.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 5, 9, 0, tzinfo=UTC),  # Mon 9am -10
+            ),
+        ]
+        result = compute_heatmap(trades)
+        assert len(result) == 1
+        assert result[0]["trade_count"] == 2
+        assert result[0]["net_pnl"] == 0.0
+
+    def test_no_exit_datetime_skipped(self):
+        """Trades without exit_datetime are skipped."""
+        trades = [_make_trade(exit_datetime=None)]
+        result = compute_heatmap(trades)
+        assert len(result) == 0
+
+    def test_string_datetime(self):
+        """ISO string exit_datetime is parsed correctly."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime="2026-01-05T09:00:00+00:00",
+            ),
+        ]
+        result = compute_heatmap(trades)
+        assert len(result) == 1
+        assert result[0]["day"] == 0  # Monday
+        assert result[0]["hour"] == 9
 
 
 # =========================================================================

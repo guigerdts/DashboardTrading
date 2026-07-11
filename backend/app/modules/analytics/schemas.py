@@ -44,6 +44,8 @@ class SummaryResponse(BaseModel):
     """Aggregated performance + risk metrics."""
 
     total_trades: int
+    total_trades_all: int = 0
+    total_open_trades: int = 0
     performance: PerformanceMetrics
     risk: RiskMetrics
 
@@ -122,3 +124,46 @@ class MarketBreakdown(BaseModel):
 class MarketBreakdownResponse(BaseModel):
     total_trades: int
     markets: list[MarketBreakdown]
+
+
+class BreakdownItem(BaseModel):
+    """Common breakdown contract shared by all 4 breakdown endpoints."""
+
+    id: int
+    name: str
+    trade_count: int
+    win_rate: float
+    net_pnl: float
+    gross_profit: float
+    gross_loss: float
+    profit_factor: float | None = None
+    expectancy: float
+    avg_win: float | None = None
+    avg_loss: float | None = None
+
+
+class BreakdownResponse(BaseModel):
+    items: list[BreakdownItem]
+
+
+class RDistributionItem(BaseModel):
+    bucket: str
+    count: int
+
+
+class RDistributionResponse(BaseModel):
+    total_trades: int
+    buckets: list[RDistributionItem]
+    trades_without_risk: int = 0
+
+
+class HeatmapItem(BaseModel):
+    day: int
+    hour: int
+    trade_count: int
+    net_pnl: float
+
+
+class HeatmapResponse(BaseModel):
+    total_trades: int
+    cells: list[HeatmapItem]

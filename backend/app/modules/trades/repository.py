@@ -64,17 +64,31 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
         market_id: int | None = None,
         date_from: datetime | None = None,
         date_to: datetime | None = None,
+        load_relations: list[str] | None = None,
     ) -> list[Trade]:
         """Return closed trades matching optional filters, sorted by exit_datetime ASC.
 
         Single query with eager loading of account and asset relationships.
         ``market_id`` filter requires a join to the ``Asset`` model.
+
+        ``load_relations`` accepts any combination of ``'strategy'``,
+        ``'setup'``, ``'tags'``, ``'mistakes'`` and adds the corresponding
+        ``joinedload`` / ``selectinload`` options. Default ``None`` keeps
+        current behavior (only account + asset loaded).
         """
-        query = (
-            select(Trade)
-            .options(joinedload(Trade.account), joinedload(Trade.asset))
-            .where(Trade.status == "closed")
-        )
+        options = [joinedload(Trade.account), joinedload(Trade.asset)]
+        if load_relations:
+            for rel in load_relations:
+                if rel == "strategy":
+                    options.append(joinedload(Trade.strategy))
+                elif rel == "setup":
+                    options.append(joinedload(Trade.setup))
+                elif rel == "tags":
+                    options.append(selectinload(Trade.tags))
+                elif rel == "mistakes":
+                    options.append(selectinload(Trade.mistakes))
+
+        query = select(Trade).options(*options).where(Trade.status == "closed")
 
         if account_id is not None:
             query = query.where(Trade.account_id == account_id)
@@ -91,6 +105,32 @@ class TradeRepository(SqlAlchemyRepository[Trade]):
 
         result = await self._session.execute(query)
         return list(result.scalars().unique().all())
+
+    async def count_by_status(
+        self,
+        status: str,
+        *,
+        account_id: int | None = None,
+        asset_id: int | None = None,
+        market_id: int | None = None,
+    ) -> int:
+        """Count trades by status with optional non-date filters.
+
+        Date filters are omitted intentionally — open trades have no
+        ``exit_datetime``, making date-based filtering inapplicable.
+        Use this for open trade counts or unfiltered closed counts.
+        """
+        query = select(func.count(Trade.id)).select_from(Trade).where(Trade.status == status)
+
+        if account_id is not None:
+            query = query.where(Trade.account_id == account_id)
+        if asset_id is not None:
+            query = query.where(Trade.asset_id == asset_id)
+        if market_id is not None:
+            query = query.join(Trade.asset).where(Asset.market_id == market_id)
+
+        result = await self._session.execute(query)
+        return result.scalar_one() or 0
 
     async def list(
         self,

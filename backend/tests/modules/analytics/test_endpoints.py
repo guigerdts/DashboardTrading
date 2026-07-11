@@ -160,7 +160,7 @@ async def test_seeded_summary_has_values(client, uow):
 
 @pytest.mark.asyncio
 async def test_openapi_schema_includes_analytics(client):
-    """OpenAPI schema lists all 6 analytics endpoints."""
+    """OpenAPI schema lists all analytics endpoints including new ones."""
     schema = (await client.get("/openapi.json")).json()
     paths = schema["paths"]
     assert "/api/analytics/summary" in paths
@@ -169,3 +169,174 @@ async def test_openapi_schema_includes_analytics(client):
     assert "/api/analytics/breakdown/asset" in paths
     assert "/api/analytics/breakdown/direction" in paths
     assert "/api/analytics/breakdown/market" in paths
+    # New endpoints
+    assert "/api/analytics/breakdown/strategies" in paths
+    assert "/api/analytics/breakdown/setups" in paths
+    assert "/api/analytics/breakdown/tags" in paths
+    assert "/api/analytics/breakdown/mistakes" in paths
+    assert "/api/analytics/distribution/r" in paths
+    assert "/api/analytics/heatmap" in paths
+
+
+# =========================================================================
+# New endpoint tests (Phase 4)
+# =========================================================================
+
+
+@pytest.mark.asyncio
+async def test_breakdown_strategies_200(client):
+    """``GET /api/analytics/breakdown/strategies`` returns 200."""
+    resp = await client.get("/api/analytics/breakdown/strategies")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_breakdown_setups_200(client):
+    """``GET /api/analytics/breakdown/setups`` returns 200."""
+    resp = await client.get("/api/analytics/breakdown/setups")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_breakdown_tags_200(client):
+    """``GET /api/analytics/breakdown/tags`` returns 200."""
+    resp = await client.get("/api/analytics/breakdown/tags")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_breakdown_mistakes_200(client):
+    """``GET /api/analytics/breakdown/mistakes`` returns 200."""
+    resp = await client.get("/api/analytics/breakdown/mistakes")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_r_distribution_200(client):
+    """``GET /api/analytics/distribution/r`` returns 200."""
+    resp = await client.get("/api/analytics/distribution/r")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_heatmap_200(client):
+    """``GET /api/analytics/heatmap`` returns 200."""
+    resp = await client.get("/api/analytics/heatmap")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_new_endpoints_empty_db(client):
+    """All new endpoints return correct empty shapes."""
+    strategies = (await client.get("/api/analytics/breakdown/strategies")).json()
+    assert strategies["items"] == []
+
+    setups = (await client.get("/api/analytics/breakdown/setups")).json()
+    assert setups["items"] == []
+
+    tags = (await client.get("/api/analytics/breakdown/tags")).json()
+    assert tags["items"] == []
+
+    mistakes = (await client.get("/api/analytics/breakdown/mistakes")).json()
+    assert mistakes["items"] == []
+
+    dist = (await client.get("/api/analytics/distribution/r")).json()
+    assert dist["buckets"] == []
+    assert dist["total_trades"] == 0
+
+    heatmap = (await client.get("/api/analytics/heatmap")).json()
+    assert heatmap["cells"] == []
+
+
+@pytest.mark.asyncio
+async def test_summary_includes_new_fields(client, uow):
+    """Summary response includes total_trades_all and total_open_trades."""
+    from app.models.account import Account
+    from app.models.asset import Asset
+
+    account = Account(name="Test Account")
+    asset = Asset(market_id=1, symbol="EURUSD")
+    await uow.accounts.add(account)
+    await uow.assets.add(asset)
+
+    # Create one open and one closed trade
+    from datetime import UTC, datetime
+
+    from app.models.trade import Trade
+
+    closed = Trade(
+        account_id=account.id,
+        asset_id=asset.id,
+        direction="long",
+        status="closed",
+        entry_price=100.0,
+        exit_price=110.0,
+        quantity=1.0,
+        entry_datetime=datetime(2026, 1, 1, tzinfo=UTC).isoformat(),
+        exit_datetime=datetime(2026, 1, 2, tzinfo=UTC).isoformat(),
+    )
+    open_trade = Trade(
+        account_id=account.id,
+        asset_id=asset.id,
+        direction="long",
+        status="open",
+        entry_price=100.0,
+        quantity=1.0,
+        entry_datetime=datetime(2026, 1, 1, tzinfo=UTC).isoformat(),
+    )
+    await uow.trades.add(closed)
+    await uow.trades.add(open_trade)
+    await uow.commit()
+
+    resp = await client.get("/api/analytics/summary")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_trades"] == 1
+    assert data["total_trades_all"] == 2
+    assert data["total_open_trades"] == 1
+
+
+@pytest.mark.asyncio
+async def test_summary_still_has_existing_fields(client, uow):
+    """Summary response includes all existing fields (regression guard)."""
+    from datetime import UTC, datetime
+
+    from app.models.account import Account
+    from app.models.asset import Asset
+    from app.models.trade import Trade
+
+    account = Account(name="Test Account")
+    asset = Asset(market_id=1, symbol="EURUSD")
+    await uow.accounts.add(account)
+    await uow.assets.add(asset)
+
+    trade = Trade(
+        account_id=account.id,
+        asset_id=asset.id,
+        direction="long",
+        status="closed",
+        entry_price=100.0,
+        exit_price=110.0,
+        quantity=1.0,
+        entry_datetime=datetime(2026, 1, 1, tzinfo=UTC).isoformat(),
+        exit_datetime=datetime(2026, 1, 2, tzinfo=UTC).isoformat(),
+    )
+    await uow.trades.add(trade)
+    await uow.commit()
+
+    resp = await client.get("/api/analytics/summary")
+    data = resp.json()
+    # Existing fields
+    assert "total_trades" in data
+    assert "performance" in data
+    assert "risk" in data
+    assert "net_pnl" in data["performance"]
+    assert "gross_profit" in data["performance"]
+    assert "gross_loss" in data["performance"]
+    assert "win_rate" in data["performance"]
+    assert "profit_factor" in data["performance"]
+    assert "expectancy" in data["performance"]
+    assert "avg_r_multiple" in data["performance"]
+    # New fields
+    assert "total_trades_all" in data
+    assert "total_open_trades" in data
