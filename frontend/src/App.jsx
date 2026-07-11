@@ -21,6 +21,7 @@ const TagsAdmin = lazy(() => import('./modules/catalogs/tags/TagsPage'));
 const MistakesAdmin = lazy(() => import('./modules/catalogs/mistakes/MistakesPage'));
 const EdgeDiscoveryPage = lazy(() => import('./modules/edge-discovery/pages/EdgeDiscoveryPage'));
 const EdgeDetailPage = lazy(() => import('./modules/edge-discovery/pages/EdgeDetailPage'));
+const AIInsightsPage = lazy(() => import('./modules/ai-insights/pages/AIInsightsPage'));
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
         <Route path="/settings/mistakes" element={<MistakesAdmin />} />
         <Route path="/analytics/edges" element={<EdgeDiscoveryPage />} />
         <Route path="/analytics/edges/:group_id" element={<EdgeDetailPage />} />
+        <Route path="/analytics/insights" element={<AIInsightsPage />} />
       </Routes>
     </Suspense>
   );
