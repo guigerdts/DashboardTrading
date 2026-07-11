@@ -3,11 +3,38 @@ schema: spec-driven
 
 context: |
   Project: DashboardTrading — Trade Intelligence Platform (TIP)
-  Stack: Python, FastAPI, React (frontend), SQLite
-  Architecture: Offline-first, modular, scalable
-  Status: Greenfield — no source code yet
-  Testing: No test runner configured yet (strict_tdd: false)
-  Style: No linter or formatter configured yet
+  Stack: Python 3.12+, FastAPI, React 18 (Vite), SQLite
+  Architecture: Offline-first, modular, incrementally built via SDD
+  Current version: v1.1.0 — Analytics Dashboard
+  Status: Active development — v1.2.0 Equity & Performance Analytics (next)
+
+  Core cycles completed:
+  - v0.1.0: Base architecture (FastAPI + React scaffolding)
+  - v0.2.0: Domain model (trades, accounts, transactions)
+  - v0.3.0: Application layer (services, routes, frontend skeleton)
+  - v0.4.0: MT5 Import (parsing, validation, preview, confirm)
+  - v0.5.0: Analytics (calculators, summary, equity, breakdowns)
+  - v0.6.0: Dashboard UI (filter bar, widgets)
+  - v0.7.0: MT5 Import frontend (upload UI, error handling)
+  - v0.8.0: Trading Journal MVP (table, filters, summary, pagination)
+  - v0.9.0: Trade Detail & Review
+  - v1.0.0: Trade Context Classification (catalogs + pivot sync)
+  - v1.1.0: Analytics Dashboard (KPI cards, breakdowns, R histogram, heatmap)
+
+  Testing:
+  - Backend: pytest (75+ tests)
+  - Frontend: vitest + Testing Library (55+ tests)
+  - strict_tdd: false (standard mode)
+
+  Tooling integrated:
+  - CodeGraph: structural code exploration before implementation
+  - Context7: framework/library documentation lookup when needed
+
+  Roadmap:
+  - v1.2.0: Equity & Performance Analytics
+  - v1.3.0: Risk Analytics
+  - v1.4.0: Edge Discovery (statistical cross-analysis)
+  - v1.5.0: AI Insights (on top of quantitative base)
 
 rules:
   proposal:
@@ -23,11 +50,12 @@ rules:
     - Keep tasks completable in one session
   apply:
     - Follow existing code patterns
+    - Use CodeGraph to detect reusable patterns before writing
     tdd: false
     test_command: ""
   verify:
-    test_command: ""
-    build_command: ""
+    test_command: "cd frontend && npx vitest run --pool=threads && cd ../backend && python -m pytest"
+    build_command: "cd frontend && npm run build && cd ../backend && echo 'no build step'"
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
