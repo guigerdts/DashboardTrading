@@ -245,7 +245,7 @@ Chain strategy: stacked-to-main (user confirmed)
 
 ## Phase 5: API
 
-### Task 14: EdgeDiscoveryService
+### [x] Task 14: EdgeDiscoveryService
 **Priority**: P0
 **Effort**: M
 **Dependencies**: Task 3, Task 11, Task 13
@@ -259,11 +259,11 @@ Chain strategy: stacked-to-main (user confirmed)
   - `get_snapshot(snapshot_id)` → EdgeRankingResponse for specific version
   - All methods degrade gracefully (empty snapshot → empty list, not 500)
 - **Sub-tasks**:
-  1. Implement service class with constructor injection
-  2. `generate()` uses `BackgroundTasks` for async generation
-  3. All read methods query repository, transform to response schemas
+  1. [x] Implement service class with constructor injection
+  2. [x] `generate()` uses `BackgroundTasks` for async generation
+  3. [x] All read methods query repository, transform to response schemas
 
-### Task 15: API Router + endpoints
+### [x] Task 15: API Router + endpoints
 **Priority**: P0
 **Effort**: M
 **Dependencies**: Task 14
@@ -279,9 +279,9 @@ Chain strategy: stacked-to-main (user confirmed)
   - GET `/snapshots/{id}` — specific snapshot, 404 if missing
   - Admin auth check on POST (reuse existing pattern from codebase)
 - **Sub-tasks**:
-  1. Create router with all 7 endpoints
-  2. Wire auth dependency for POST generate
-  3. Add _show_insufficient query to GET /
+  1. [x] Create router with all 7 endpoints
+  2. [x] Wire auth dependency for POST generate
+  3. [x] Add `show_insufficient` query to GET /
 
 ---
 
@@ -384,7 +384,7 @@ Chain strategy: stacked-to-main (user confirmed)
   1. Write `test_sqlite_edge_repository.py` with in-memory SQLite fixture
   2. Write `test_numpy_statistics_engine.py` with known input/output
 
-### Task 22: Integration + router tests
+### [x] Task 22: Integration + router tests
 **Priority**: P1
 **Effort**: M
 **Dependencies**: Task 13, Task 15
@@ -394,8 +394,8 @@ Chain strategy: stacked-to-main (user confirmed)
   - Router: TestClient with mocked service; 200 on data; 422 on invalid params; 404 on missing edge; 202 on generate; auth rejection on POST without admin
   - Empty state: 200 with empty rankings, not 500
 - **Sub-tasks**:
-  1. Write `test_engine.py` with mocked UOW and real storage
-  2. Write `test_router.py` with mocked service
+  1. [x] Write `test_engine.py` with mocked UOW and real storage
+  2. [x] Write `test_router.py` with mocked service
 
 ### Task 23: Frontend tests
 **Priority**: P2
