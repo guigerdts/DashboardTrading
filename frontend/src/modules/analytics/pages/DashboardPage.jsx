@@ -8,6 +8,10 @@ import { useBreakdownTags } from '../hooks/useBreakdownTags';
 import { useBreakdownMistakes } from '../hooks/useBreakdownMistakes';
 import { useRDistribution } from '../hooks/useRDistribution';
 import { useHeatmap } from '../hooks/useHeatmap';
+import { useRollingMetrics } from '../hooks/useRollingMetrics';
+import { usePerformanceByPeriod } from '../hooks/usePerformanceByPeriod';
+import { usePerformanceComparison } from '../hooks/usePerformanceComparison';
+import { useDashboardFilters } from '../hooks/useDashboardFilters';
 import { ErrorBoundary } from '../../../shared/components/ErrorBoundary';
 import { FiltersBar } from '../components/FiltersBar';
 import { SummaryCards } from '../components/SummaryCards';
@@ -17,6 +21,9 @@ import { DirectionBreakdown } from '../components/DirectionBreakdown';
 import { BreakdownTable } from '../components/BreakdownTable';
 import { RHistogram } from '../components/RHistogram';
 import { HeatmapChart } from '../components/HeatmapChart';
+import { RollingMetricsChart } from '../components/RollingMetricsChart';
+import { PerformanceByPeriod } from '../components/PerformanceByPeriod';
+import { PeriodComparison } from '../components/PeriodComparison';
 
 /**
  * Dashboard page — orchestrator.
@@ -31,6 +38,7 @@ import { HeatmapChart } from '../components/HeatmapChart';
  * Loading, empty, error, and success states are handled per-widget by the components.
  */
 export default function DashboardPage() {
+  const { filters } = useDashboardFilters();
   const summary = useSummary();
   const equity = useEquity();
   const assetBreakdown = useAssetBreakdown();
@@ -41,6 +49,9 @@ export default function DashboardPage() {
   const breakdownMistakes = useBreakdownMistakes();
   const rDistribution = useRDistribution();
   const heatmap = useHeatmap();
+  const rolling = useRollingMetrics(filters);
+  const performanceByPeriod = usePerformanceByPeriod(filters);
+  const comparison = usePerformanceComparison(filters);
 
   return (
     <div className="p-6">
@@ -146,6 +157,30 @@ export default function DashboardPage() {
             error={heatmap.error} onRetry={heatmap.refetch} />
         </div>
       </ErrorBoundary>
+
+      {/* Rolling Metrics */}
+      <ErrorBoundary>
+        <div className="mb-6">
+          <RollingMetricsChart data={rolling.data}
+            isLoading={rolling.isLoading} isError={rolling.isError}
+            error={rolling.error} onRetry={rolling.refetch} />
+        </div>
+      </ErrorBoundary>
+
+      {/* Performance by Period & Period Comparison — two columns */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ErrorBoundary>
+          <PerformanceByPeriod data={performanceByPeriod.data}
+            isLoading={performanceByPeriod.isLoading} isError={performanceByPeriod.isError}
+            error={performanceByPeriod.error} onRetry={performanceByPeriod.refetch} />
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <PeriodComparison data={comparison.data}
+            isLoading={comparison.isLoading} isError={comparison.isError}
+            error={comparison.error} onRetry={comparison.refetch} />
+        </ErrorBoundary>
+      </div>
     </div>
   );
 }

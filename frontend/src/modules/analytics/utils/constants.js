@@ -14,6 +14,9 @@ export const QUERY_KEYS = {
   breakdownMistakes: (filters) => ['analytics', 'breakdown/mistakes', filters],
   rDistribution: (filters) => ['analytics', 'distribution/r', filters],
   heatmap: (filters) => ['analytics', 'heatmap', filters],
+  rolling: (filters) => ['analytics', 'rolling', filters],
+  performanceByPeriod: (filters, period) => ['analytics', 'performance', period, filters],
+  compare: (filters) => ['analytics', 'compare', filters],
 };
 
 /** Default empty filter state */

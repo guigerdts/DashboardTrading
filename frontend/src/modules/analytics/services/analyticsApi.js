@@ -9,6 +9,11 @@ function buildParams(filters = {}) {
   if (filters.accountId) params.account_id = filters.accountId;
   if (filters.dateFrom) params.date_from = filters.dateFrom;
   if (filters.dateTo) params.date_to = filters.dateTo;
+  if (filters.windowSize) params.window_size = filters.windowSize;
+  if (filters.periodAFrom) params.period_a_from = filters.periodAFrom;
+  if (filters.periodATo) params.period_a_to = filters.periodATo;
+  if (filters.periodBFrom) params.period_b_from = filters.periodBFrom;
+  if (filters.periodBTo) params.period_b_to = filters.periodBTo;
   return params;
 }
 
@@ -43,12 +48,22 @@ export const analyticsApi = {
 
   getHeatmap: (filters) =>
     api.get('/analytics/heatmap', { params: buildParams(filters) }),
-};
 
-// @gap: no UI consumer
-export async function getPerformance(filters) {
-  throw new Error('getPerformance is not implemented — no UI consumer yet');
-}
+  // ── Rolling / Performance / Compare ──────────────────────────────────────
+
+  getRolling: (filters) =>
+    api.get('/analytics/rolling', { params: buildParams(filters) }),
+
+  getPerformanceByPeriod: (filters, period) =>
+    api.get('/analytics/performance/by-period', {
+      params: { ...buildParams(filters), period },
+    }),
+
+  comparePeriods: (filters) =>
+    api.get('/analytics/performance/compare', {
+      params: buildParams(filters),
+    }),
+};
 
 // @gap: no UI consumer
 export async function getMarketBreakdown(filters) {
