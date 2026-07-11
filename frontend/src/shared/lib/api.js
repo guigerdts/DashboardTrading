@@ -25,6 +25,12 @@ export const api = {
     return request(qs ? `${endpoint}?${qs}` : endpoint, { signal });
   },
 
+  post: (endpoint, body) =>
+    request(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(body ?? {}),
+    }),
+
   put: (endpoint, body) =>
     request(endpoint, {
       method: 'PUT',

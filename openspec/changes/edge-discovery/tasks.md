@@ -287,20 +287,20 @@ Chain strategy: stacked-to-main (user confirmed)
 
 ## Phase 6: Frontend
 
-### Task 16: Frontend types and API service
+### [x] Task 16: Frontend types and API service
 **Priority**: P1
 **Effort**: S
 **Dependencies**: Task 1 (API contract)
 **Files**: `frontend/src/modules/edge-discovery/types/edge-discovery.ts`, `frontend/src/modules/edge-discovery/services/edge-discovery.service.ts`
 - **Acceptance Criteria**:
-  - TypeScript interfaces: `EdgeScore`, `EdgeRankingResponse`, `EdgeDetailResponse`, `TagImpact`, `MistakeImpact`, `SnapshotInfo`, `SnapshotListResponse`
+  - JSDoc type definitions (project uses JS not TS): `EdgeScore`, `EdgeRankingResponse`, `EdgeDetailResponse`, `TagImpact`, `MistakeImpact`, `SnapshotInfo`, `SnapshotListResponse`
   - Service exposes: `generate()`, `getRankings(showInsufficient?)`, `getEdge(groupId)`, `getTags()`, `getMistakes()`, `listSnapshots()`, `getSnapshot(id)`
   - Uses shared `api` from `shared/lib/api`
 - **Sub-tasks**:
-  1. Create type definitions matching backend schemas
-  2. Create API service with all methods
+  1. [x] Create type definitions matching backend schemas (JSDoc in JS)
+  2. [x] Create API service with all methods
 
-### Task 17: React Query hooks
+### [x] Task 17: React Query hooks
 **Priority**: P1
 **Effort**: S
 **Dependencies**: Task 16
@@ -311,10 +311,10 @@ Chain strategy: stacked-to-main (user confirmed)
   - Follows existing hook patterns (see `useEquity.js`)
   - Auto-refetch disabled (snapshots are point-in-time)
 - **Sub-tasks**:
-  1. Create `useEdgeRankings.ts` hook
-  2. Create `useEdgeDetail.ts` hook
+  1. [x] Create `useEdgeRankings.ts` hook
+  2. [x] Create `useEdgeDetail.ts` hook
 
-### Task 18: EdgeDiscovery frontend components
+### [x] Task 18: EdgeDiscovery frontend components
 **Priority**: P1
 **Effort**: L
 **Dependencies**: Task 16
@@ -327,27 +327,27 @@ Chain strategy: stacked-to-main (user confirmed)
   - All components handle loading skeleton (using shared Skeleton), empty, and error states
   - Reuse shared primitives from `frontend/src/shared/components/`
 - **Sub-tasks**:
-  1. Implement `EdgeStabilityIndicator` (smallest, foundation for others)
-  2. Implement `EdgeScoreCard`
-  3. Implement `EdgeRankingTable`
-  4. Implement `EdgeDetailDrilldown`
+  1. [x] Implement `EdgeStabilityIndicator` (smallest, foundation for others)
+  2. [x] Implement `EdgeScoreCard`
+  3. [x] Implement `EdgeRankingTable`
+  4. [x] Implement `EdgeDetailDrilldown`
 
-### Task 19: Frontend pages and routing
+### [x] Task 19: Frontend pages and routing
 **Priority**: P1
 **Effort**: M
 **Dependencies**: Task 17, Task 18
 **Files**: `frontend/src/modules/edge-discovery/pages/EdgeDiscoveryPage.tsx`, `frontend/src/modules/edge-discovery/pages/EdgeDetailPage.tsx`, `frontend/src/modules/edge-discovery/index.tsx`, `frontend/src/App.jsx`
 - **Acceptance Criteria**:
-  - `EdgeDiscoveryPage`: renders EdgeRankingTable, generate button (admin), snapshot selector, filter for show_insufficient
+  - `EdgeDiscoveryPage`: renders EdgeRankingTable, generate button, filter for show_insufficient
   - `EdgeDetailPage`: renders EdgeScoreCard + EdgeDetailDrilldown, back button to rankings
   - Route `/analytics/edges` → EdgeDiscoveryPage, `/analytics/edges/:group_id` → EdgeDetailPage
   - Route added to `App.jsx` with `lazy()` import
-  - Module entry `index.tsx` exports route definition pattern
+  - Module entry `index.tsx` exports pattern
 - **Sub-tasks**:
-  1. Create `EdgeDiscoveryPage.tsx`
-  2. Create `EdgeDetailPage.tsx`
-  3. Create `index.tsx` module entry
-  4. Add lazy route in `App.jsx`
+  1. [x] Create `EdgeDiscoveryPage.tsx`
+  2. [x] Create `EdgeDetailPage.tsx`
+  3. [x] Create `index.tsx` module entry
+  4. [x] Add lazy route in `App.jsx`
 
 ---
 
@@ -397,7 +397,7 @@ Chain strategy: stacked-to-main (user confirmed)
   1. [x] Write `test_engine.py` with mocked UOW and real storage
   2. [x] Write `test_router.py` with mocked service
 
-### Task 23: Frontend tests
+### [x] Task 23: Frontend tests
 **Priority**: P2
 **Effort**: M
 **Dependencies**: Task 17, Task 18
@@ -406,7 +406,7 @@ Chain strategy: stacked-to-main (user confirmed)
   - Component tests: render with data → correct output; loading skeleton → Skeleton shown; empty state → "No edges found" message; error state → error message
   - Hook test: queries correct endpoint, passes params, returns expected shape
 - **Sub-tasks**:
-  1. Write EdgeStabilityIndicator test (all 4 confidence levels)
-  2. Write EdgeScoreCard test (loading, data, error states)
-  3. Write EdgeRankingTable test (sorting, filtering, insufficient toggle)
-  4. Write useEdgeRankings hook test (spy on service)
+  1. [x] Write EdgeStabilityIndicator test (all 4 confidence levels)
+  2. [x] Write EdgeScoreCard test (loading, data, error states)
+  3. [x] Write EdgeRankingTable test (sorting, filtering, insufficient toggle)
+  4. [x] Write useEdgeRankings hook test (spy on service)
