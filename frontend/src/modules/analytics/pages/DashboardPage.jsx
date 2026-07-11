@@ -2,12 +2,21 @@ import { useSummary } from '../hooks/useSummary';
 import { useEquity } from '../hooks/useEquity';
 import { useAssetBreakdown } from '../hooks/useAssetBreakdown';
 import { useDirectionBreakdown } from '../hooks/useDirectionBreakdown';
+import { useBreakdownStrategies } from '../hooks/useBreakdownStrategies';
+import { useBreakdownSetups } from '../hooks/useBreakdownSetups';
+import { useBreakdownTags } from '../hooks/useBreakdownTags';
+import { useBreakdownMistakes } from '../hooks/useBreakdownMistakes';
+import { useRDistribution } from '../hooks/useRDistribution';
+import { useHeatmap } from '../hooks/useHeatmap';
 import { ErrorBoundary } from '../../../shared/components/ErrorBoundary';
 import { FiltersBar } from '../components/FiltersBar';
 import { SummaryCards } from '../components/SummaryCards';
 import { EquityChart } from '../components/EquityChart';
 import { AssetBreakdownTable } from '../components/AssetBreakdownTable';
 import { DirectionBreakdown } from '../components/DirectionBreakdown';
+import { BreakdownTable } from '../components/BreakdownTable';
+import { RHistogram } from '../components/RHistogram';
+import { HeatmapChart } from '../components/HeatmapChart';
 
 /**
  * Dashboard page — orchestrator.
@@ -26,6 +35,12 @@ export default function DashboardPage() {
   const equity = useEquity();
   const assetBreakdown = useAssetBreakdown();
   const directionBreakdown = useDirectionBreakdown();
+  const breakdownStrategies = useBreakdownStrategies();
+  const breakdownSetups = useBreakdownSetups();
+  const breakdownTags = useBreakdownTags();
+  const breakdownMistakes = useBreakdownMistakes();
+  const rDistribution = useRDistribution();
+  const heatmap = useHeatmap();
 
   return (
     <div className="p-6">
@@ -86,6 +101,51 @@ export default function DashboardPage() {
           />
         </ErrorBoundary>
       </div>
+
+      {/* Four breakdown tables in 2×2 grid */}
+      <div className="mb-6 mt-6">
+        <h2 className="mb-4 text-lg font-semibold text-gray-800">Breakdowns</h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ErrorBoundary>
+            <BreakdownTable title="Strategies" data={breakdownStrategies.data}
+              isLoading={breakdownStrategies.isLoading} isError={breakdownStrategies.isError}
+              error={breakdownStrategies.error} onRetry={breakdownStrategies.refetch} />
+          </ErrorBoundary>
+          <ErrorBoundary>
+            <BreakdownTable title="Setups" data={breakdownSetups.data}
+              isLoading={breakdownSetups.isLoading} isError={breakdownSetups.isError}
+              error={breakdownSetups.error} onRetry={breakdownSetups.refetch} />
+          </ErrorBoundary>
+          <ErrorBoundary>
+            <BreakdownTable title="Tags" data={breakdownTags.data}
+              isLoading={breakdownTags.isLoading} isError={breakdownTags.isError}
+              error={breakdownTags.error} onRetry={breakdownTags.refetch} />
+          </ErrorBoundary>
+          <ErrorBoundary>
+            <BreakdownTable title="Mistakes" data={breakdownMistakes.data}
+              isLoading={breakdownMistakes.isLoading} isError={breakdownMistakes.isError}
+              error={breakdownMistakes.error} onRetry={breakdownMistakes.refetch} />
+          </ErrorBoundary>
+        </div>
+      </div>
+
+      {/* R Histogram */}
+      <ErrorBoundary>
+        <div className="mb-6">
+          <RHistogram data={rDistribution.data}
+            isLoading={rDistribution.isLoading} isError={rDistribution.isError}
+            error={rDistribution.error} onRetry={rDistribution.refetch} />
+        </div>
+      </ErrorBoundary>
+
+      {/* Heatmap */}
+      <ErrorBoundary>
+        <div className="mb-6">
+          <HeatmapChart data={heatmap.data}
+            isLoading={heatmap.isLoading} isError={heatmap.isError}
+            error={heatmap.error} onRetry={heatmap.refetch} />
+        </div>
+      </ErrorBoundary>
     </div>
   );
 }

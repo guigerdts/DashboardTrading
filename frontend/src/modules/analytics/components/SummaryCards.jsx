@@ -1,7 +1,13 @@
 import { SummaryCard } from './SummaryCard';
 import { Skeleton } from '../../../shared/components/Skeleton';
 import { ErrorFallback } from '../../../shared/components/ErrorFallback';
-import { formatCurrency, formatPercent, formatRatio } from '../utils/formatters';
+import {
+  formatCurrency,
+  formatPercent,
+  formatRatio,
+  formatNumber,
+  formatDecimal,
+} from '../utils/formatters';
 
 /**
  * Container for the 5 summary stat cards.
@@ -21,8 +27,8 @@ export function SummaryCards({ data, isLoading, isError, error, onRetry }) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
+        {Array.from({ length: 7 }).map((_, i) => (
           <div
             key={i}
             className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
@@ -38,12 +44,14 @@ export function SummaryCards({ data, isLoading, isError, error, onRetry }) {
   // Empty state — no data or all values null
   if (!data) {
     return (
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
         <SummaryCard title="Net P&amp;L" value="\u2014" />
         <SummaryCard title="Win Rate" value="\u2014" />
         <SummaryCard title="Profit Factor" value="\u2014" />
         <SummaryCard title="Expectancy" value="\u2014" />
         <SummaryCard title="Max Drawdown" value="\u2014" />
+        <SummaryCard title="Total Trades" value="\u2014" />
+        <SummaryCard title="Avg R" value="\u2014" />
       </div>
     );
   }
@@ -55,9 +63,11 @@ export function SummaryCards({ data, isLoading, isError, error, onRetry }) {
   const profitFactor = performance.profit_factor ?? 0;
   const expectancy = performance.expectancy ?? 0;
   const maxDrawdown = risk.max_drawdown ?? 0;
+  const totalTrades = data.total_trades_all ?? 0;
+  const avgR = performance.avg_r_multiple ?? 0;
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-7">
       <SummaryCard
         title="Net P&amp;L"
         value={formatCurrency(netPnl)}
@@ -76,6 +86,13 @@ export function SummaryCards({ data, isLoading, isError, error, onRetry }) {
         title="Max Drawdown"
         value={formatPercent(Math.abs(maxDrawdown))}
         isNegative={maxDrawdown < 0}
+      />
+      <SummaryCard title="Total Trades" value={formatNumber(totalTrades)} />
+      <SummaryCard
+        title="Avg R"
+        value={formatDecimal(avgR)}
+        isPositive={avgR > 0}
+        isNegative={avgR < 0}
       />
     </div>
   );

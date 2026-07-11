@@ -25,6 +25,24 @@ export const analyticsApi = {
 
   getDirectionBreakdown: (filters) =>
     api.get('/analytics/breakdown/direction', { params: buildParams(filters) }),
+
+  getBreakdownStrategies: (filters) =>
+    api.get('/analytics/breakdown/strategies', { params: buildParams(filters) }),
+
+  getBreakdownSetups: (filters) =>
+    api.get('/analytics/breakdown/setups', { params: buildParams(filters) }),
+
+  getBreakdownTags: (filters) =>
+    api.get('/analytics/breakdown/tags', { params: buildParams(filters) }),
+
+  getBreakdownMistakes: (filters) =>
+    api.get('/analytics/breakdown/mistakes', { params: buildParams(filters) }),
+
+  getRDistribution: (filters) =>
+    api.get('/analytics/distribution/r', { params: buildParams(filters) }),
+
+  getHeatmap: (filters) =>
+    api.get('/analytics/heatmap', { params: buildParams(filters) }),
 };
 
 // @gap: no UI consumer

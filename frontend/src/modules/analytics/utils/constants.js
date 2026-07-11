@@ -8,6 +8,12 @@ export const QUERY_KEYS = {
   equity: (filters) => ['analytics', 'equity', filters],
   assetBreakdown: (filters) => ['analytics', 'breakdown/asset', filters],
   directionBreakdown: (filters) => ['analytics', 'breakdown/direction', filters],
+  breakdownStrategies: (filters) => ['analytics', 'breakdown/strategies', filters],
+  breakdownSetups: (filters) => ['analytics', 'breakdown/setups', filters],
+  breakdownTags: (filters) => ['analytics', 'breakdown/tags', filters],
+  breakdownMistakes: (filters) => ['analytics', 'breakdown/mistakes', filters],
+  rDistribution: (filters) => ['analytics', 'distribution/r', filters],
+  heatmap: (filters) => ['analytics', 'heatmap', filters],
 };
 
 /** Default empty filter state */

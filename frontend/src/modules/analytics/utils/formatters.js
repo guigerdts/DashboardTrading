@@ -50,3 +50,23 @@ export function formatDate(value) {
     return '\u2014';
   }
 }
+
+/**
+ * Format a number with locale commas (trade counts).
+ * @param {number|null|undefined} value
+ * @returns {string}
+ */
+export function formatNumber(value) {
+  if (value == null || value === '') return '\u2014';
+  return new Intl.NumberFormat('en-US').format(value);
+}
+
+/**
+ * Format a decimal to 2 fixed places (avg R multiple).
+ * @param {number|null|undefined} value
+ * @returns {string}
+ */
+export function formatDecimal(value) {
+  if (value == null || value === '') return '\u2014';
+  return value.toFixed(2);
+}
