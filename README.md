@@ -7,9 +7,9 @@ Professional trading intelligence platform for tracking, analyzing, and improvin
 
 ---
 
-## Current Version: v1.1.0 — Analytics Dashboard
+## Current Version: v1.3.0 — Risk Analytics
 
-Full analytics dashboard with 7 KPI summary cards, equity chart, asset/direction breakdowns, breakdown tables by strategy/setup/tag/mistake, R-multiple distribution histogram, and day×hour trading activity heatmap.
+Risk metrics engine: consecutive wins/losses, holding time, risk per trade, risk utilization, exposure by asset/session/strategy, cross-asset correlation, risk of ruin, Kelly fraction, and expectancy adjusted by variance. Built on the analytics pipeline with zero schema changes.
 
 ---
 
@@ -17,7 +17,8 @@ Full analytics dashboard with 7 KPI summary cards, equity chart, asset/direction
 
 | Version | Release | What |
 |---------|---------|------|
-| **v1.2.0** | **current** | **Equity & Performance Analytics** — rolling metrics, period grouping, comparison |
+| **v1.3.0** | **current** | **Risk Analytics** — risk metrics, exposure, correlation, probabilistic risk |
+| **v1.2.0** | 2026-07 | **Equity & Performance Analytics** — rolling metrics, period grouping, comparison |
 | v1.1.0 | 2026-07 | **Analytics Dashboard** — KPI cards, breakdowns, R histogram, heatmap |
 | v1.0.0 | 2026-07 | **Trade Context Classification** — Strategy, Setup, Tag, Mistake catalogs + assignment |
 | v0.9.0 | 2026-07 | **Trade Detail & Review** — enriched trade view, review editor |
@@ -148,7 +149,8 @@ All artifacts are persisted in Engram (cross-session memory) and optionally mirr
 | Version | Focus | Scope |
 |---------|-------|-------|
 | **v1.2.0** ✅ | **Equity & Performance Analytics** | Rolling metrics, performance by period, period comparison |
-| **v1.3.0** 🎯 next | **Risk Analytics** | Risk of ruin, MAE/MFE, holding time, exposure, session distribution |
+| **v1.3.0** ✅ | **Risk Analytics** | Risk metrics, exposure, correlation, probabilistic risk |
+| **v1.4.0** 🎯 next | **Edge Discovery** | Cross-analysis of Strategy×Setup×Tag×Mistake with statistical validation |
 | **v1.3.0** | **Risk Analytics** | Risk of ruin, MAE/MFE, holding time, exposure, session distribution |
 | **v1.4.0** | **Edge Discovery** | Cross-analysis of Strategy×Setup×Tag×Mistake with statistical validation |
 | **v1.5.0** | **AI Insights** | Automated summaries, pattern detection, natural-language recommendations |
