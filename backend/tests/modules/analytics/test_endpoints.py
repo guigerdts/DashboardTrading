@@ -133,6 +133,13 @@ async def test_account_id_and_date_filters(client):
     resp = await client.get("/api/analytics/breakdown/market", params={"account_id": 1})
     assert resp.status_code == 200
 
+    # Risk analytics
+    resp = await client.get("/api/analytics/risk-metrics", params={"account_id": 1})
+    assert resp.status_code == 200
+
+    resp = await client.get("/api/analytics/correlation", params={"account_id": 1})
+    assert resp.status_code == 200
+
 
 @pytest.mark.asyncio
 async def test_seeded_summary_has_values(client, uow):
@@ -180,6 +187,12 @@ async def test_openapi_schema_includes_analytics(client):
     assert "/api/analytics/rolling" in paths
     assert "/api/analytics/performance/by-period" in paths
     assert "/api/analytics/performance/compare" in paths
+    # Risk analytics
+    assert "/api/analytics/risk-metrics" in paths
+    assert "/api/analytics/exposure/by-asset" in paths
+    assert "/api/analytics/exposure/by-session" in paths
+    assert "/api/analytics/exposure/by-strategy" in paths
+    assert "/api/analytics/correlation" in paths
 
 
 # =========================================================================
@@ -230,6 +243,41 @@ async def test_heatmap_200(client):
 
 
 @pytest.mark.asyncio
+async def test_risk_metrics_200(client):
+    """``GET /api/analytics/risk-metrics`` returns 200."""
+    resp = await client.get("/api/analytics/risk-metrics")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_exposure_by_asset_200(client):
+    """``GET /api/analytics/exposure/by-asset`` returns 200."""
+    resp = await client.get("/api/analytics/exposure/by-asset")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_exposure_by_session_200(client):
+    """``GET /api/analytics/exposure/by-session`` returns 200."""
+    resp = await client.get("/api/analytics/exposure/by-session")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_exposure_by_strategy_200(client):
+    """``GET /api/analytics/exposure/by-strategy`` returns 200."""
+    resp = await client.get("/api/analytics/exposure/by-strategy")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_correlation_200(client):
+    """``GET /api/analytics/correlation`` returns 200."""
+    resp = await client.get("/api/analytics/correlation")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_new_endpoints_empty_db(client):
     """All new endpoints return correct empty shapes."""
     strategies = (await client.get("/api/analytics/breakdown/strategies")).json()
@@ -250,6 +298,26 @@ async def test_new_endpoints_empty_db(client):
 
     heatmap = (await client.get("/api/analytics/heatmap")).json()
     assert heatmap["cells"] == []
+
+    # Risk analytics
+    risk = (await client.get("/api/analytics/risk-metrics")).json()
+    assert risk["max_drawdown"] == 0.0
+    assert risk["drawdown_pct"] == 0.0
+    assert risk["avg_holding_time_days"] == 0.0
+    assert risk["kelly_fraction"] == 0.0
+
+    exp_asset = (await client.get("/api/analytics/exposure/by-asset")).json()
+    assert exp_asset == []
+
+    exp_session = (await client.get("/api/analytics/exposure/by-session")).json()
+    assert exp_session == []
+
+    exp_strategy = (await client.get("/api/analytics/exposure/by-strategy")).json()
+    assert exp_strategy == []
+
+    corr = (await client.get("/api/analytics/correlation")).json()
+    assert corr["assets"] == []
+    assert corr["matrix"] == []
 
 
 @pytest.mark.asyncio
