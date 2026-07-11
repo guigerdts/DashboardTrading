@@ -96,3 +96,56 @@ def compute_pnl_by_period(trades: list[Trade], period: str = "daily") -> list[di
         aggregated[key] += compute_pnl(trade)
 
     return [{"period": k, "pnl": round(v, 2)} for k, v in sorted(aggregated.items())]
+
+
+def compute_performance_by_period(trades: list[Trade], group_by: str = "month") -> list[dict]:
+    """Group trades by calendar period and compute full performance metrics.
+
+    Parameters
+    ----------
+    trades:
+        List of closed Trade objects (sorted by exit_datetime internally).
+    group_by:
+        One of ``"month"``, ``"quarter"``, ``"year"``.
+
+    Returns
+    -------
+    list[dict]
+        Each dict: ``period``, ``trade_count``, ``net_pnl``,
+        ``gross_profit``, ``gross_loss``, ``win_rate``, ``profit_factor``,
+        ``expectancy``, ``avg_r_multiple``.
+
+        Records are sorted chronologically by period key.
+
+    Notes
+    -----
+    - ``profit_factor`` is ``None`` when the group has no losses
+      (``gross_loss == 0``), matching ``compute_performance()``.
+    - ``avg_r_multiple`` is ``None`` when no trades in the group have
+      a ``risk_amount`` set.
+    - Periods with no trades are omitted (no empty records for absent
+      periods).
+    """
+    from collections import defaultdict
+
+    from app.modules.analytics.calculators.performance import (
+        compute_performance,
+    )
+
+    groups: dict[str, list[Trade]] = defaultdict(list)
+    sorted_trades = sorted(trades, key=lambda t: t.exit_datetime or t.entry_datetime)
+
+    for t in sorted_trades:
+        dt = _to_dt(t.exit_datetime or t.entry_datetime)
+        if group_by == "quarter":
+            key = f"{dt.year}-Q{(dt.month - 1) // 3 + 1}"
+        elif group_by == "year":
+            key = str(dt.year)
+        else:  # "month" (default)
+            key = dt.strftime("%Y-%m")
+        groups[key].append(t)
+
+    return [
+        {"period": k, "trade_count": len(v), **compute_performance(v)}
+        for k, v in sorted(groups.items())
+    ]

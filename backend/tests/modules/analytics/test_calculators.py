@@ -23,8 +23,10 @@ from app.modules.analytics.calculators.heatmap import compute_heatmap
 from app.modules.analytics.calculators.performance import compute_performance
 from app.modules.analytics.calculators.pnl import compute_pnl
 from app.modules.analytics.calculators.risk import compute_risk
+from app.modules.analytics.calculators.rolling import compute_rolling_metrics
 from app.modules.analytics.calculators.timeseries import (
     compute_equity_curve,
+    compute_performance_by_period,
     compute_pnl_by_period,
     compute_streaks,
 )
@@ -718,3 +720,214 @@ class TestTimeseries:
         result = compute_pnl_by_period(trades, "daily")
         assert len(result) == 1
         assert result[0]["pnl"] == 30.0
+
+
+# =========================================================================
+# Rolling metrics calculator
+# =========================================================================
+
+
+class TestComputeRollingMetrics:
+    """Sliding-window performance over sorted trades."""
+
+    def test_rolling_metrics_window_size(self):
+        """100 trades with window=30 → 71 points."""
+        trades = [
+            _make_trade(
+                exit_price=100.0 + i,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1 + (i // 28), (i % 28) + 1, tzinfo=UTC),
+            )
+            for i in range(100)
+        ]
+        result = compute_rolling_metrics(trades, window_size=30)
+        assert len(result) == 71  # 100 - 30 + 1
+        # First point covers trades [0..29], index=1
+        assert result[0]["index"] == 1
+        assert result[0]["trade_count"] == 30
+        # Last point covers trades [70..99], index=71
+        assert result[-1]["index"] == 71
+        assert result[-1]["trade_count"] == 30
+
+    def test_rolling_metrics_insufficient_trades(self):
+        """Fewer trades than window → empty list."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 1, tzinfo=UTC),
+            )
+        ]
+        result = compute_rolling_metrics(trades, window_size=5)
+        assert result == []
+
+    def test_rolling_metrics_profit_factor_null(self):
+        """All winners in a window → profit_factor is None."""
+        trades = [
+            _make_trade(
+                exit_price=110.0 + i,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, i + 1, tzinfo=UTC),
+            )
+            for i in range(5)
+        ]
+        result = compute_rolling_metrics(trades, window_size=3)
+        assert len(result) == 3
+        for point in result:
+            assert point["profit_factor"] is None  # all wins, no losses
+
+    def test_rolling_metrics_single_window(self):
+        """window_size == len(trades) → one point."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, i + 1, tzinfo=UTC),
+            )
+            for i in range(5)
+        ]
+        result = compute_rolling_metrics(trades, window_size=5)
+        assert len(result) == 1
+        assert result[0]["index"] == 1
+        assert result[0]["trade_count"] == 5
+
+    def test_rolling_metrics_mixed_results(self):
+        """Mix of wins and losses produces varying metrics across windows."""
+        trades = [
+            _make_trade(
+                exit_price=110.0 if i % 2 == 0 else 90.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, i + 1, tzinfo=UTC),
+            )
+            for i in range(10)
+        ]
+        result = compute_rolling_metrics(trades, window_size=5)
+        assert len(result) == 6  # 10 - 5 + 1
+        # All points have valid metric keys
+        for point in result:
+            assert "win_rate" in point
+            assert "profit_factor" in point
+            assert "expectancy" in point
+
+
+# =========================================================================
+# Performance by period calculator
+# =========================================================================
+
+
+class TestComputePerformanceByPeriod:
+    """Full performance metrics grouped by calendar period."""
+
+    def test_period_grouping_monthly(self):
+        """Trades across months grouped correctly."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 1, 15, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=90.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 2, 10, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=120.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 2, 20, tzinfo=UTC),
+            ),
+        ]
+        result = compute_performance_by_period(trades, group_by="month")
+        assert len(result) == 2
+        assert result[0]["period"] == "2026-01"
+        assert result[0]["trade_count"] == 1
+        assert result[0]["net_pnl"] == 10.0
+        assert result[1]["period"] == "2026-02"
+        assert result[1]["trade_count"] == 2
+        assert result[1]["net_pnl"] == 10.0  # -10 + 20
+
+    def test_period_grouping_quarterly(self):
+        """Trades across quarters grouped correctly."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 2, 15, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=90.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 5, 10, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=120.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 8, 20, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=130.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 11, 5, tzinfo=UTC),
+            ),
+        ]
+        result = compute_performance_by_period(trades, group_by="quarter")
+        assert len(result) == 4
+        assert result[0]["period"] == "2026-Q1"
+        assert result[0]["trade_count"] == 1
+        assert result[0]["net_pnl"] == 10.0
+        assert result[1]["period"] == "2026-Q2"
+        assert result[1]["trade_count"] == 1
+        assert result[1]["net_pnl"] == -10.0
+        assert result[2]["period"] == "2026-Q3"
+        assert result[2]["trade_count"] == 1
+        assert result[2]["net_pnl"] == 20.0
+        assert result[3]["period"] == "2026-Q4"
+        assert result[3]["trade_count"] == 1
+        assert result[3]["net_pnl"] == 30.0
+
+    def test_period_grouping_yearly(self):
+        """Trades across years grouped correctly."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2025, 6, 15, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=90.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 3, 10, tzinfo=UTC),
+            ),
+            _make_trade(
+                exit_price=120.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 9, 20, tzinfo=UTC),
+            ),
+        ]
+        result = compute_performance_by_period(trades, group_by="year")
+        assert len(result) == 2
+        assert result[0]["period"] == "2025"
+        assert result[0]["trade_count"] == 1
+        assert result[0]["net_pnl"] == 10.0
+        assert result[1]["period"] == "2026"
+        assert result[1]["trade_count"] == 2
+        assert result[1]["net_pnl"] == 10.0  # -10 + 20
+
+    def test_period_grouping_empty(self):
+        """No trades → empty records list."""
+        result = compute_performance_by_period([], group_by="month")
+        assert result == []
+
+    def test_period_grouping_default_month(self):
+        """Default group_by is 'month'."""
+        trades = [
+            _make_trade(
+                exit_price=110.0,
+                entry_price=100.0,
+                exit_datetime=datetime(2026, 3, 15, tzinfo=UTC),
+            ),
+        ]
+        result = compute_performance_by_period(trades)
+        assert len(result) == 1
+        assert result[0]["period"] == "2026-03"
+        assert result[0]["net_pnl"] == 10.0

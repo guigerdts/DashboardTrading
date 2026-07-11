@@ -13,9 +13,10 @@ class AnalyticsFilter(BaseModel):
     market_id: int | None = None
     date_from: datetime | None = None
     date_to: datetime | None = None
+    window_size: int | None = None
 
     def to_filter_kwargs(self) -> dict:
-        return self.model_dump(exclude_none=True)
+        return {k: v for k, v in self.model_dump(exclude_none=True).items() if k != "window_size"}
 
 
 class PerformanceMetrics(BaseModel):
@@ -167,3 +168,69 @@ class HeatmapItem(BaseModel):
 class HeatmapResponse(BaseModel):
     total_trades: int
     cells: list[HeatmapItem]
+
+
+# =========================================================================
+# Rolling windowed metrics
+# =========================================================================
+
+
+class RollingPoint(BaseModel):
+    """A single data point in the rolling metrics series."""
+
+    index: int
+    win_rate: float
+    profit_factor: float | None = None
+    expectancy: float
+    avg_r_multiple: float | None = None
+    trade_count: int
+
+
+class RollingResponse(BaseModel):
+    """Rolling windowed metrics response."""
+
+    window_size: int
+    points: list[RollingPoint]
+
+
+# =========================================================================
+# Performance by period
+# =========================================================================
+
+
+class PerformanceByPeriodRecord(BaseModel):
+    """Performance metrics for a single period."""
+
+    period: str
+    trade_count: int
+    net_pnl: float
+    gross_profit: float
+    gross_loss: float
+    win_rate: float
+    profit_factor: float | None = None
+    expectancy: float
+    avg_r_multiple: float | None = None
+
+
+class PerformanceByPeriodResponse(BaseModel):
+    """Performance grouped by calendar period."""
+
+    records: list[PerformanceByPeriodRecord]
+
+
+# =========================================================================
+# Period comparison
+# =========================================================================
+
+
+class ComparePeriodsResponse(BaseModel):
+    """Comparison of two arbitrary date ranges with delta and delta_percent.
+
+    ``delta`` uses ``period_a`` as the minuend (period_a - period_b).
+    ``delta_percent`` uses ``period_a`` as the base — null when base is 0.
+    """
+
+    period_a: PerformanceByPeriodRecord
+    period_b: PerformanceByPeriodRecord
+    delta: PerformanceByPeriodRecord
+    delta_percent: PerformanceByPeriodRecord

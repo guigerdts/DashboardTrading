@@ -1,5 +1,6 @@
 """AnalyticsService — orchestrator. Single fetch, distributes to calculators."""
 
+from app.core.exceptions import BusinessRuleError
 from app.db.unit_of_work import UnitOfWork
 from app.modules.analytics.calculators.breakdown import (
     breakdown_by_asset,
@@ -16,8 +17,10 @@ from app.modules.analytics.calculators.distribution import compute_r_distributio
 from app.modules.analytics.calculators.heatmap import compute_heatmap
 from app.modules.analytics.calculators.performance import compute_performance
 from app.modules.analytics.calculators.risk import compute_risk
+from app.modules.analytics.calculators.rolling import compute_rolling_metrics
 from app.modules.analytics.calculators.timeseries import (
     compute_equity_curve,
+    compute_performance_by_period,
     compute_pnl_by_period,
     compute_streaks,
 )
@@ -27,6 +30,7 @@ from app.modules.analytics.schemas import (
     AssetBreakdownResponse,
     BreakdownItem,
     BreakdownResponse,
+    ComparePeriodsResponse,
     DirectionBreakdownResponse,
     EquityPoint,
     EquityResponse,
@@ -34,12 +38,16 @@ from app.modules.analytics.schemas import (
     HeatmapResponse,
     MarketBreakdown,
     MarketBreakdownResponse,
+    PerformanceByPeriodRecord,
+    PerformanceByPeriodResponse,
     PerformanceMetrics,
     PerformanceResponse,
     PnLPeriod,
     RDistributionItem,
     RDistributionResponse,
     RiskMetrics,
+    RollingPoint,
+    RollingResponse,
     StreakInfo,
     Streaks,
     SummaryResponse,
@@ -179,4 +187,123 @@ class AnalyticsService:
         return HeatmapResponse(
             total_trades=len(trades),
             cells=[HeatmapItem(**c) for c in cells],
+        )
+
+    # =====================================================================
+    # Rolling / Performance / Compare
+    # =====================================================================
+
+    async def get_rolling_metrics(self, filters: AnalyticsFilter) -> RollingResponse:
+        """Compute rolling windowed metrics over closed trades."""
+        window_size = filters.window_size or 30
+        if window_size < 10 or window_size > 200:
+            raise BusinessRuleError("window_size must be between 10 and 200", field="window_size")
+        trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        points = compute_rolling_metrics(trades, window_size=window_size)
+        return RollingResponse(
+            window_size=window_size,
+            points=[RollingPoint(**p) for p in points],
+        )
+
+    async def get_performance_by_period(
+        self, filters: AnalyticsFilter, period: str = "month"
+    ) -> PerformanceByPeriodResponse:
+        """Group closed trades by calendar period with full metrics."""
+        trades = await self.uow.trades.list_closed(**filters.to_filter_kwargs())
+        records = compute_performance_by_period(trades, group_by=period)
+        return PerformanceByPeriodResponse(
+            records=[PerformanceByPeriodRecord(**r) for r in records],
+        )
+
+    async def compare_periods(
+        self,
+        period_from: AnalyticsFilter,
+        period_to: AnalyticsFilter,
+    ) -> ComparePeriodsResponse:
+        """Compare performance across two arbitrary date ranges.
+
+        Each filter carries its own ``date_from``/``date_to`` and shared
+        filter params (account_id, asset_id, etc.).
+        """
+        trades_a = await self.uow.trades.list_closed(**period_from.to_filter_kwargs())
+        trades_b = await self.uow.trades.list_closed(**period_to.to_filter_kwargs())
+
+        perf_a = compute_performance(trades_a)
+        perf_b = compute_performance(trades_b)
+
+        record_a = PerformanceByPeriodRecord(
+            period="period_a",
+            trade_count=len(trades_a),
+            **perf_a,
+        )
+        record_b = PerformanceByPeriodRecord(
+            period="period_b",
+            trade_count=len(trades_b),
+            **perf_b,
+        )
+
+        # Fields to compare (shared across both periods)
+        _compare_fields = [
+            "trade_count",
+            "net_pnl",
+            "gross_profit",
+            "gross_loss",
+            "win_rate",
+            "profit_factor",
+            "expectancy",
+            "avg_r_multiple",
+        ]
+        # Fields that can be legitimately None (ratio-based)
+        _ratio_fields = {"profit_factor", "avg_r_multiple"}
+
+        def _diff(
+            a_val: float | int | None,
+            b_val: float | int | None,
+            *,
+            field: str = "",
+        ) -> float | int | None:
+            if field in _ratio_fields:
+                if a_val is None or b_val is None:
+                    return None
+                return round(a_val - b_val, 4)
+            # Non-ratio fields: always have a value from compute_performance
+            if isinstance(a_val, int) and isinstance(b_val, int):
+                return a_val - b_val
+            return round((a_val or 0.0) - (b_val or 0.0), 4)
+
+        def _pct(
+            a_val: float | int | None,
+            b_val: float | int | None,
+            *,
+            field: str = "",
+        ) -> float | int | None:
+            """Percentage difference using period_a as base."""
+            diff = _diff(a_val, b_val, field=field)
+            if diff is None:
+                return None
+            base = a_val if not isinstance(a_val, int) else float(a_val)
+            if base is None or base == 0:
+                if field in _ratio_fields:
+                    return None
+                return 0.0
+            return round((diff / abs(base)) * 100, 4)
+
+        delta_data: dict[str, float | int | None] = {}
+        delta_pct_data: dict[str, float | int | None] = {}
+
+        for field in _compare_fields:
+            a_val = getattr(record_a, field)
+            b_val = getattr(record_b, field)
+            delta_data[field] = _diff(a_val, b_val, field=field)
+            delta_pct_data[field] = _pct(a_val, b_val, field=field)
+
+        # period field is a string label, not comparable
+        delta_data["period"] = "delta"
+        delta_pct_data["period"] = "delta_pct"
+
+        return ComparePeriodsResponse(
+            period_a=record_a,
+            period_b=record_b,
+            delta=PerformanceByPeriodRecord(**delta_data),
+            delta_percent=PerformanceByPeriodRecord(**delta_pct_data),
         )

@@ -1,18 +1,23 @@
 """Analytics REST endpoints — read-only, single query per request."""
 
-from fastapi import APIRouter, Depends
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, Query
 
 from app.modules.analytics.dependencies import get_analytics_service
 from app.modules.analytics.schemas import (
     AnalyticsFilter,
     AssetBreakdownResponse,
     BreakdownResponse,
+    ComparePeriodsResponse,
     DirectionBreakdownResponse,
     EquityResponse,
     HeatmapResponse,
     MarketBreakdownResponse,
+    PerformanceByPeriodResponse,
     PerformanceResponse,
     RDistributionResponse,
+    RollingResponse,
     SummaryResponse,
 )
 from app.modules.analytics.service import AnalyticsService
@@ -114,3 +119,59 @@ async def get_heatmap(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     return await service.get_heatmap(filters)
+
+
+# =========================================================================
+# Rolling / Performance / Compare
+# =========================================================================
+
+
+@router.get("/rolling", response_model=RollingResponse)
+async def get_rolling_metrics(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Sliding-window performance metrics over the N most recent closed trades.
+
+    The ``window_size`` param (10–200, default 30) is carried on the
+    shared ``AnalyticsFilter``. Returns empty ``points`` array when total
+    closed trades is less than ``window_size``.
+    """
+    return await service.get_rolling_metrics(filters)
+
+
+@router.get("/performance/by-period", response_model=PerformanceByPeriodResponse)
+async def get_performance_by_period(
+    group_by: str = Query("month", description="One of: month, quarter, year"),
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Performance metrics grouped by calendar period.
+
+    Groups closed trades by ``month``, ``quarter``, or ``year`` and
+    returns full metrics per group (not just PnL).
+    """
+    return await service.get_performance_by_period(filters, period=group_by)
+
+
+@router.get("/performance/compare", response_model=ComparePeriodsResponse)
+async def compare_periods(
+    period_a_from: datetime = Query(..., description="Period A start (inclusive)"),
+    period_a_to: datetime = Query(..., description="Period A end (exclusive)"),
+    period_b_from: datetime = Query(..., description="Period B start (inclusive)"),
+    period_b_to: datetime = Query(..., description="Period B end (exclusive)"),
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Compare performance across two arbitrary date ranges.
+
+    Shared filter params (account_id, asset_id, etc.) apply to both
+    periods. Each period has its own date range.
+    """
+    period_a_filter = filters.model_copy(
+        update={"date_from": period_a_from, "date_to": period_a_to}
+    )
+    period_b_filter = filters.model_copy(
+        update={"date_from": period_b_from, "date_to": period_b_to}
+    )
+    return await service.compare_periods(period_a_filter, period_b_filter)

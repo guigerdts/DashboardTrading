@@ -176,6 +176,10 @@ async def test_openapi_schema_includes_analytics(client):
     assert "/api/analytics/breakdown/mistakes" in paths
     assert "/api/analytics/distribution/r" in paths
     assert "/api/analytics/heatmap" in paths
+    # Rolling / Performance / Compare
+    assert "/api/analytics/rolling" in paths
+    assert "/api/analytics/performance/by-period" in paths
+    assert "/api/analytics/performance/compare" in paths
 
 
 # =========================================================================
@@ -340,3 +344,89 @@ async def test_summary_still_has_existing_fields(client, uow):
     # New fields
     assert "total_trades_all" in data
     assert "total_open_trades" in data
+
+
+# =========================================================================
+# Rolling endpoint tests
+# =========================================================================
+
+
+@pytest.mark.asyncio
+async def test_rolling_endpoint(client):
+    """``GET /api/analytics/rolling`` returns 200 with valid data."""
+    resp = await client.get("/api/analytics/rolling", params={"window_size": 30})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "window_size" in data
+    assert "points" in data
+    assert data["window_size"] == 30
+    # Empty DB → points is empty array
+    assert data["points"] == []
+
+
+@pytest.mark.asyncio
+async def test_rolling_endpoint_invalid_window(client):
+    """window_size < 10 or > 200 → 422."""
+    resp = await client.get("/api/analytics/rolling", params={"window_size": 5})
+    assert resp.status_code == 422
+
+    resp = await client.get("/api/analytics/rolling", params={"window_size": 250})
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_rolling_endpoint_default_window(client):
+    """No window_size param → default 30."""
+    resp = await client.get("/api/analytics/rolling")
+    assert resp.status_code == 200
+    assert resp.json()["window_size"] == 30
+
+
+# =========================================================================
+# Performance by period endpoint tests
+# =========================================================================
+
+
+@pytest.mark.asyncio
+async def test_performance_by_period_endpoint(client):
+    """``GET /api/analytics/performance/by-period`` returns 200."""
+    resp = await client.get("/api/analytics/performance/by-period", params={"group_by": "month"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "records" in data
+    assert data["records"] == []
+
+
+@pytest.mark.asyncio
+async def test_performance_by_period_default(client):
+    """Default group_by is 'month'."""
+    resp = await client.get("/api/analytics/performance/by-period")
+    assert resp.status_code == 200
+
+
+# =========================================================================
+# Compare periods endpoint tests
+# =========================================================================
+
+
+@pytest.mark.asyncio
+async def test_compare_periods_endpoint(client):
+    """``GET /api/analytics/performance/compare`` returns 200 with two periods."""
+    resp = await client.get(
+        "/api/analytics/performance/compare",
+        params={
+            "period_a_from": "2026-01-01T00:00:00",
+            "period_a_to": "2026-06-30T00:00:00",
+            "period_b_from": "2026-07-01T00:00:00",
+            "period_b_to": "2026-12-31T00:00:00",
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "period_a" in data
+    assert "period_b" in data
+    assert "delta" in data
+    assert "delta_percent" in data
+    # Empty DB → trade_count = 0
+    assert data["period_a"]["trade_count"] == 0
+    assert data["period_b"]["trade_count"] == 0
