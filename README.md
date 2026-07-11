@@ -17,7 +17,8 @@ Full analytics dashboard with 7 KPI summary cards, equity chart, asset/direction
 
 | Version | Release | What |
 |---------|---------|------|
-| v1.1.0 | current | **Analytics Dashboard** — KPI cards, breakdowns, R histogram, heatmap |
+| **v1.2.0** | **current** | **Equity & Performance Analytics** — rolling metrics, period grouping, comparison |
+| v1.1.0 | 2026-07 | **Analytics Dashboard** — KPI cards, breakdowns, R histogram, heatmap |
 | v1.0.0 | 2026-07 | **Trade Context Classification** — Strategy, Setup, Tag, Mistake catalogs + assignment |
 | v0.9.0 | 2026-07 | **Trade Detail & Review** — enriched trade view, review editor |
 | v0.8.0 | 2026-07 | **Trading Journal MVP** — filtered/sorted table, summary cards, pagination |
@@ -146,7 +147,8 @@ All artifacts are persisted in Engram (cross-session memory) and optionally mirr
 
 | Version | Focus | Scope |
 |---------|-------|-------|
-| **v1.2.0** 🎯 next | **Equity & Performance Analytics** | Equity curve, drawdown, rolling metrics, period comparison, CSV/Excel export |
+| **v1.2.0** ✅ | **Equity & Performance Analytics** | Rolling metrics, performance by period, period comparison |
+| **v1.3.0** 🎯 next | **Risk Analytics** | Risk of ruin, MAE/MFE, holding time, exposure, session distribution |
 | **v1.3.0** | **Risk Analytics** | Risk of ruin, MAE/MFE, holding time, exposure, session distribution |
 | **v1.4.0** | **Edge Discovery** | Cross-analysis of Strategy×Setup×Tag×Mistake with statistical validation |
 | **v1.5.0** | **AI Insights** | Automated summaries, pattern detection, natural-language recommendations |
