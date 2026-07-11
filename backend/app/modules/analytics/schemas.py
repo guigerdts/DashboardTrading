@@ -234,3 +234,49 @@ class ComparePeriodsResponse(BaseModel):
     period_b: PerformanceByPeriodRecord
     delta: PerformanceByPeriodRecord
     delta_percent: PerformanceByPeriodRecord
+
+
+# =========================================================================
+# Risk analytics (Phase 1 — Risk Analytics Wiring)
+# =========================================================================
+
+
+class RiskMetricsResponse(BaseModel):
+    """Comprehensive risk metrics for a filtered set of trades."""
+
+    max_drawdown: float
+    drawdown_pct: float
+    recovery_factor: float | None = None
+    payoff_ratio: float | None = None
+    profit_factor: float | None = None
+    risk_of_ruin: float
+    sharpe_ratio: float | None = None
+    sortino_ratio: float | None = None
+    calmar_ratio: float | None = None
+    avg_holding_time_days: float
+    kelly_fraction: float
+
+
+class ExposureResponse(BaseModel):
+    """Exposure breakdown by a grouping dimension (asset, session, strategy)."""
+
+    asset: str
+    exposure_pct: float
+    trade_count: int
+
+
+class CorrelationMatrix(BaseModel):
+    """Symmetric N×N correlation matrix between assets."""
+
+    assets: list[str]
+    matrix: list[list[float]]
+    method: str = "pearson"
+
+
+class CorrelationItem(BaseModel):
+    """Single pairwise correlation result."""
+
+    asset_a: str
+    asset_b: str
+    coefficient: float
+    strength: str
