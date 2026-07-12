@@ -173,11 +173,13 @@ class AIInsightsService:
         context = await self.collect_context(filters)
         insights = await self._evaluate_all(context)
         now = datetime.now(UTC)
+        confidence = "insufficient" if not insights else "high"
         return SummaryResponse(
             total_count=len(insights),
             by_severity=self._count_by_severity(insights),
             insights=insights,
             generated_at=now,
+            confidence=confidence,
         )
 
     async def get_detail(

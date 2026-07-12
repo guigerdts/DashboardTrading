@@ -6,6 +6,24 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+# ── Request filters ────────────────────────────────────────────────────────
+
+
+class InsightsFilter(BaseModel):
+    """Filter params for AI Insights evaluation. All fields optional."""
+
+    account_id: int | None = None
+    asset_id: int | None = None
+    date_from: datetime | None = None
+    date_to: datetime | None = None
+    strategy: str | None = None
+    setup: str | None = None
+
+    def to_filters(self) -> dict:
+        """Drop ``None`` fields — service expects a plain dict."""
+        return {k: v for k, v in self.model_dump(exclude_none=True).items()}
+
+
 # ── Metric / Insight schemas ──────────────────────────────────────────────
 
 
@@ -57,6 +75,7 @@ class SummaryResponse(BaseModel):
     by_severity: dict
     insights: list[Insight]
     generated_at: datetime
+    confidence: str = "high"
 
 
 class DetailResponse(BaseModel):
