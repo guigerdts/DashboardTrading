@@ -37,6 +37,10 @@ class UnitOfWork:
         self._setups = None
         self._tags = None
         self._mistakes = None
+        self._strategy_versions = None
+        self._experiments = None
+        self._runs = None
+        self._run_metrics = None
 
     # ------------------------------------------------------------------
     # Lazy-init repository properties (late imports)
@@ -144,6 +148,54 @@ class UnitOfWork:
 
             self._mistakes = CatalogRepository(self._session, Mistake)
         return self._mistakes
+
+    @property
+    def strategy_versions(self) -> "StrategyVersionRepository":  # type: ignore[empty-body]  # noqa: F821
+        """Access the ``StrategyVersionRepository`` (lazy-init)."""
+        if self._strategy_versions is None:
+            from app.modules.strategy_lab.repository import (
+                StrategyVersionRepository,
+            )
+
+            self._strategy_versions = StrategyVersionRepository(self._session)
+        return self._strategy_versions
+
+    @property
+    def experiments(self) -> "ExperimentRepository":  # type: ignore[empty-body]  # noqa: F821
+        """Access the ``ExperimentRepository`` (lazy-init)."""
+        if self._experiments is None:
+            from app.modules.strategy_lab.repository import (
+                ExperimentRepository,
+            )
+
+            self._experiments = ExperimentRepository(self._session)
+        return self._experiments
+
+    @property
+    def runs(self) -> "RunRepository":  # type: ignore[empty-body]  # noqa: F821
+        """Access the ``RunRepository`` (lazy-init).
+
+        Runs are immutable — only ``add()`` and ``update_status()`` are allowed.
+        """
+        if self._runs is None:
+            from app.modules.strategy_lab.repository import RunRepository
+
+            self._runs = RunRepository(self._session)
+        return self._runs
+
+    @property
+    def run_metrics(self) -> "SqlAlchemyRepository":  # type: ignore[empty-body]  # noqa: F821
+        """Access the ``SqlAlchemyRepository[RunMetric]`` (lazy-init).
+
+        RunMetrics are immutable after creation — only ``add()`` is supported.
+        """
+        if self._run_metrics is None:
+            from app.modules.strategy_lab.repository import (
+                RunMetricRepository,
+            )
+
+            self._run_metrics = RunMetricRepository(self._session)
+        return self._run_metrics
 
     # ------------------------------------------------------------------
     # Transaction lifecycle
