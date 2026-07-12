@@ -7,7 +7,7 @@ Uses SQLAlchemy 2.0 ``Mapped`` + ``mapped_column`` style.
 """
 
 import sqlalchemy as sa
-from sqlalchemy import ForeignKey, Text
+from sqlalchemy import ForeignKey, Integer, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, SoftDeleteMixin, TimestampMixin
@@ -19,6 +19,7 @@ class Strategy(Base, TimestampMixin, SoftDeleteMixin):
     References
     ----------
     - BR-14: ``name`` UNIQUE via ``uq_strategies_name``
+    - BR-SL-06: ``active_version_id`` FK → strategy_versions.id (nullable)
     """
 
     __tablename__ = "strategies"
@@ -29,6 +30,11 @@ class Strategy(Base, TimestampMixin, SoftDeleteMixin):
         nullable=False,  # BR-14 — enforced by uq_strategies_name
     )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    active_version_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("strategy_versions.id"),
+        nullable=True,
+    )
 
     __table_args__ = (
         sa.UniqueConstraint("name", name="uq_strategies_name"),  # BR-14

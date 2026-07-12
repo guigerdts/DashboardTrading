@@ -18,6 +18,12 @@ from app.models.review import (  # noqa: F401  -- review cluster
 )
 from app.models.risk_profile import RiskProfile  # noqa: F401  -- risk presets
 from app.models.strategy import Setup, Strategy, StrategySetup  # noqa: F401  -- strategy cluster
+from app.models.strategy_lab import (  # noqa: F401  -- strategy lab cluster
+    Experiment,
+    Run,
+    RunMetric,
+    StrategyVersion,
+)
 from app.models.tag import Tag  # noqa: F401  -- tag catalog
 from app.models.trade import Trade  # noqa: F401  -- canonical trade entity
 from app.models.trading_session import TradingSession  # noqa: F401  -- work sessions
@@ -29,14 +35,18 @@ __all__ = [
     "Base",
     "Emotion",
     "EmotionEntry",
+    "Experiment",
     "Mistake",
     "MistakeEntry",
     "Note",
     "RiskProfile",
+    "Run",
+    "RunMetric",
     "Setup",
     "SoftDeleteMixin",
     "Strategy",
     "StrategySetup",
+    "StrategyVersion",
     "Tag",
     "TimestampMixin",
     "Trade",
