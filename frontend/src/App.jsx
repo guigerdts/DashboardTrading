@@ -22,6 +22,8 @@ const MistakesAdmin = lazy(() => import('./modules/catalogs/mistakes/MistakesPag
 const EdgeDiscoveryPage = lazy(() => import('./modules/edge-discovery/pages/EdgeDiscoveryPage'));
 const EdgeDetailPage = lazy(() => import('./modules/edge-discovery/pages/EdgeDetailPage'));
 const AIInsightsPage = lazy(() => import('./modules/ai-insights/pages/AIInsightsPage'));
+const StrategyLabPage = lazy(() => import('./modules/strategy-lab/pages/StrategyLabPage'));
+const ExperimentDetailPage = lazy(() => import('./modules/strategy-lab/pages/ExperimentDetailPage'));
 
 function App() {
   return (
@@ -47,6 +49,8 @@ function App() {
         <Route path="/analytics/edges" element={<EdgeDiscoveryPage />} />
         <Route path="/analytics/edges/:group_id" element={<EdgeDetailPage />} />
         <Route path="/analytics/insights" element={<AIInsightsPage />} />
+        <Route path="/lab/experiments" element={<StrategyLabPage />} />
+        <Route path="/lab/experiments/:id" element={<ExperimentDetailPage />} />
       </Routes>
     </Suspense>
   );

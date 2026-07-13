@@ -10,8 +10,13 @@ import { QUERY_KEYS } from '../utils/constants';
  * @param {object} filters - Filter params including date ranges for both periods
  */
 export function usePerformanceComparison(filters) {
+  const enabled = Boolean(
+    filters?.periodAFrom && filters?.periodATo && filters?.periodBFrom && filters?.periodBTo,
+  );
+
   return useQuery({
     queryKey: QUERY_KEYS.compare(filters),
     queryFn: () => analyticsApi.comparePeriods(filters),
+    enabled,
   });
 }

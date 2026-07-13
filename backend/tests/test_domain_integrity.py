@@ -28,15 +28,19 @@ EXPECTED_TABLES: list[str] = [
     "brokers",
     "emotion_entries",
     "emotions",
+    "experiments",
     "market_sessions",
     "markets",
     "mistake_entries",
     "mistakes",
     "notes",
     "risk_profiles",
+    "run_metrics",
+    "runs",
     "setups",
     "strategies",
     "strategy_setups",
+    "strategy_versions",
     "tags",
     "timeframes",
     "trade_reviews",
@@ -44,6 +48,7 @@ EXPECTED_TABLES: list[str] = [
     "trades",
     "trading_sessions",
 ]
+
 
 # SQLite creates indexes for UNIQUE constraints as ``sqlite_autoindex_*``
 # rather than using the ``uq_`` names from the naming convention.
