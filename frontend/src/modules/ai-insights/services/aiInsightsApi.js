@@ -1,6 +1,6 @@
 import { api } from '../../../shared/lib/api';
 
-const BASE = '/api/ai-insights';
+const BASE = '/ai-insights';
 
 /**
  * API bridge for all AI Insights endpoints.

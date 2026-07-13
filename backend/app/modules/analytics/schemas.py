@@ -14,9 +14,12 @@ class AnalyticsFilter(BaseModel):
     date_from: datetime | None = None
     date_to: datetime | None = None
     window_size: int | None = None
+    min_trades: int | None = None
+
+    _service_only = {"window_size", "min_trades"}
 
     def to_filter_kwargs(self) -> dict:
-        return {k: v for k, v in self.model_dump(exclude_none=True).items() if k != "window_size"}
+        return {k: v for k, v in self.model_dump(exclude_none=True).items() if k not in self._service_only}
 
 
 class PerformanceMetrics(BaseModel):
@@ -280,3 +283,18 @@ class CorrelationItem(BaseModel):
     asset_b: str
     coefficient: float
     strength: str
+
+
+class CorrelationPair(BaseModel):
+    """Single asset-pair correlation for the exposure/correlation endpoint."""
+
+    asset_a: str
+    asset_b: str
+    pearson_r: float | None = None
+    trade_count: int = 0
+
+
+class CorrelationPairResponse(BaseModel):
+    """Pairwise correlation list returned by the exposure/correlation endpoint."""
+
+    pairs: list[CorrelationPair]

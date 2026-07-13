@@ -13,6 +13,7 @@ from app.modules.analytics.schemas import (
     AssetBreakdownResponse,
     ComparePeriodsResponse,
     CorrelationMatrix,
+    CorrelationPairResponse,
     DirectionBreakdownResponse,
     EquityResponse,
     ExposureResponse,
@@ -412,4 +413,51 @@ class TestGetCorrelation:
         # Diagonal must be 1.0
         assert result.matrix[0][0] == 1.0
         assert result.matrix[1][1] == 1.0
+        svc.uow.trades.list_closed.assert_awaited_once()
+
+
+class TestGetExposureCorrelation:
+    """``get_exposure_correlation()`` returns CorrelationPairResponse."""
+
+    @pytest.mark.asyncio
+    async def test_empty_when_no_trades(self, svc):
+        svc.uow.trades.list_closed = AsyncMock(return_value=[])
+        result = await svc.get_exposure_correlation(AnalyticsFilter())
+        assert isinstance(result, CorrelationPairResponse)
+        assert result.pairs == []
+        svc.uow.trades.list_closed.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_single_asset_no_pairs(self, svc):
+        trades = _mock_trade_list(30)
+        for t in trades:
+            t.asset_id = 1
+            t.asset.name = "EURUSD"
+            t.asset.id = 1
+        svc.uow.trades.list_closed = AsyncMock(return_value=trades)
+        result = await svc.get_exposure_correlation(AnalyticsFilter())
+        assert isinstance(result, CorrelationPairResponse)
+        assert result.pairs == []
+        svc.uow.trades.list_closed.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_pairwise_correlations(self, svc):
+        # 2 assets, each with trades on 10 shared dates
+        trades = _mock_trade_list(20, start_pnl=10.0)
+        for i, t in enumerate(trades):
+            t.asset_id = 1 if i < 10 else 2
+            t.asset.name = "EURUSD" if i < 10 else "GBPUSD"
+            t.asset.id = t.asset_id
+            # Both asset groups share the same dates
+            date_idx = i % 10
+            t.exit_datetime = f"2026-01-{date_idx + 2:02d}T00:00:00"
+        svc.uow.trades.list_closed = AsyncMock(return_value=trades)
+        result = await svc.get_exposure_correlation(AnalyticsFilter(min_trades=5))
+        assert isinstance(result, CorrelationPairResponse)
+        assert len(result.pairs) == 1
+        pair = result.pairs[0]
+        assert pair.asset_a == "EURUSD"
+        assert pair.asset_b == "GBPUSD"
+        assert pair.pearson_r is not None
+        assert pair.trade_count > 0
         svc.uow.trades.list_closed.assert_awaited_once()

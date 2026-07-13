@@ -9,7 +9,7 @@ const BASE_PATH = '/analytics/edges';
 export const edgeDiscoveryApi = {
   /** Generate a new edge snapshot (POST). */
   generate: () =>
-    api.post(BASE_PATH, {}),
+    api.post(`${BASE_PATH}/generate`, {}),
 
   /** Fetch edge rankings, optionally including insufficient edges. */
   getRankings: (showInsufficient) =>

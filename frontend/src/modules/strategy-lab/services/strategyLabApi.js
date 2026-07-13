@@ -1,6 +1,6 @@
 import { api } from '../../../shared/lib/api';
 
-const BASE = '/api/strategy-lab';
+const BASE = '/strategy-lab';
 
 export const strategyLabApi = {
   // Strategy Versions

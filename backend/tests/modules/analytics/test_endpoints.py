@@ -192,6 +192,7 @@ async def test_openapi_schema_includes_analytics(client):
     assert "/api/analytics/exposure/by-asset" in paths
     assert "/api/analytics/exposure/by-session" in paths
     assert "/api/analytics/exposure/by-strategy" in paths
+    assert "/api/analytics/exposure/correlation" in paths
     assert "/api/analytics/correlation" in paths
 
 
@@ -278,6 +279,18 @@ async def test_correlation_200(client):
 
 
 @pytest.mark.asyncio
+async def test_exposure_correlation_200(client):
+    """``GET /api/analytics/exposure/correlation`` returns 200."""
+    resp = await client.get("/api/analytics/exposure/correlation")
+    assert resp.status_code == 200
+
+    resp = await client.get(
+        "/api/analytics/exposure/correlation", params={"min_trades": 30}
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_new_endpoints_empty_db(client):
     """All new endpoints return correct empty shapes."""
     strategies = (await client.get("/api/analytics/breakdown/strategies")).json()
@@ -318,6 +331,9 @@ async def test_new_endpoints_empty_db(client):
     corr = (await client.get("/api/analytics/correlation")).json()
     assert corr["assets"] == []
     assert corr["matrix"] == []
+
+    exp_corr = (await client.get("/api/analytics/exposure/correlation")).json()
+    assert exp_corr["pairs"] == []
 
 
 @pytest.mark.asyncio

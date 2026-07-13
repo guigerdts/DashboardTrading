@@ -11,6 +11,7 @@ from app.modules.analytics.schemas import (
     BreakdownResponse,
     ComparePeriodsResponse,
     CorrelationMatrix,
+    CorrelationPairResponse,
     DirectionBreakdownResponse,
     EquityResponse,
     ExposureResponse,
@@ -172,6 +173,15 @@ async def get_correlation(
 ):
     """Compute symmetric N×N Pearson correlation matrix across assets."""
     return await service.get_correlation(filters)
+
+
+@router.get("/exposure/correlation", response_model=CorrelationPairResponse)
+async def get_exposure_correlation(
+    filters: AnalyticsFilter = Depends(),
+    service: AnalyticsService = Depends(get_analytics_service),
+):
+    """Cross-asset correlation pairs — pairwise format for tabular display."""
+    return await service.get_exposure_correlation(filters)
 
 
 # =========================================================================

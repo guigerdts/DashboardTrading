@@ -47,6 +47,8 @@ from app.modules.analytics.schemas import (
     BreakdownResponse,
     ComparePeriodsResponse,
     CorrelationMatrix,
+    CorrelationPair,
+    CorrelationPairResponse,
     DirectionBreakdownResponse,
     EquityPoint,
     EquityResponse,
@@ -304,7 +306,7 @@ class AnalyticsService:
         trades = await self.uow.trades.list_closed(
             **filters.to_filter_kwargs(), load_relations=["asset"]
         )
-        pairs = compute_correlation(trades)
+        pairs = compute_correlation(trades, min_trades=filters.min_trades or 30)
 
         # Collect unique asset names
         asset_names: set[str] = set()
@@ -331,6 +333,32 @@ class AnalyticsService:
             assets=sorted_assets,
             matrix=matrix,
             method="pearson",
+        )
+
+    async def get_exposure_correlation(
+        self, filters: AnalyticsFilter
+    ) -> CorrelationPairResponse:
+        """Compute pairwise cross-asset correlations.
+
+        Returns the raw pairwise results (not a matrix) ideal for tabular
+        display. Pairs below the ``min_trades`` threshold have
+        ``pearson_r=None``.
+        """
+        trades = await self.uow.trades.list_closed(
+            **filters.to_filter_kwargs(), load_relations=["asset"]
+        )
+        pairs = compute_correlation(trades, min_trades=filters.min_trades or 30)
+
+        return CorrelationPairResponse(
+            pairs=[
+                CorrelationPair(
+                    asset_a=p.get("asset_a_name") or str(p["asset_a_id"]),
+                    asset_b=p.get("asset_b_name") or str(p["asset_b_id"]),
+                    pearson_r=p["correlation"],
+                    trade_count=p["trade_count"],
+                )
+                for p in pairs
+            ]
         )
 
     # =====================================================================
